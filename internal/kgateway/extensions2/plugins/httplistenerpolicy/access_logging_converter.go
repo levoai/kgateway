@@ -155,10 +155,14 @@ func createFileAccessLog(fileSink *v1alpha1.FileSink) (proto.Message, error) {
 			},
 		}
 	case fileSink.JsonFormat != nil:
+		jsonFormat, err := convertJsonFormat(fileSink.JsonFormat)
+		if err != nil {
+			return nil, err
+		}
 		fileCfg.AccessLogFormat = &envoyalfile.FileAccessLog_LogFormat{
 			LogFormat: &envoycorev3.SubstitutionFormatString{
 				Format: &envoycorev3.SubstitutionFormatString_JsonFormat{
-					JsonFormat: convertJsonFormat(fileSink.JsonFormat),
+					JsonFormat: jsonFormat,
 				},
 				Formatters: formatterExtensions,
 			},
@@ -192,13 +196,18 @@ func addAccessLogFilter(accessLogCfg *envoyaccesslogv3.AccessLog, filter *v1alph
 		err     error
 	)
 
+	// Initialize the Filter field if it's nil
+	if accessLogCfg.Filter == nil {
+		accessLogCfg.Filter = &envoyaccesslogv3.AccessLogFilter{}
+	}
+
 	switch {
 	case filter.OrFilter != nil:
 		filters, err = translateOrFilters(filter.OrFilter)
 		if err != nil {
 			return err
 		}
-		accessLogCfg.GetFilter().FilterSpecifier = &envoyaccesslogv3.AccessLogFilter_OrFilter{
+		accessLogCfg.Filter.FilterSpecifier = &envoyaccesslogv3.AccessLogFilter_OrFilter{
 			OrFilter: &envoyaccesslogv3.OrFilter{Filters: filters},
 		}
 	case filter.AndFilter != nil:
@@ -206,7 +215,7 @@ func addAccessLogFilter(accessLogCfg *envoyaccesslogv3.AccessLog, filter *v1alph
 		if err != nil {
 			return err
 		}
-		accessLogCfg.GetFilter().FilterSpecifier = &envoyaccesslogv3.AccessLogFilter_AndFilter{
+		accessLogCfg.Filter.FilterSpecifier = &envoyaccesslogv3.AccessLogFilter_AndFilter{
 			AndFilter: &envoyaccesslogv3.AndFilter{Filters: filters},
 		}
 	case filter.FilterType != nil:
@@ -384,22 +393,22 @@ func createHeaderMatchSpecifier(header gwv1.HTTPHeaderMatch) *envoyroutev3.Heade
 	}
 }
 
-func convertJsonFormat(jsonFormat *runtime.RawExtension) *structpb.Struct {
+func convertJsonFormat(jsonFormat *runtime.RawExtension) (*structpb.Struct, error) {
 	if jsonFormat == nil {
-		return nil
+		return nil, nil
 	}
 
 	var formatMap map[string]interface{}
 	if err := json.Unmarshal(jsonFormat.Raw, &formatMap); err != nil {
-		return nil
+		return nil, fmt.Errorf("failed to unmarshal JSON format: %w", err)
 	}
 
 	structVal, err := structpb.NewStruct(formatMap)
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("failed to create struct from JSON format: %w", err)
 	}
 
-	return structVal
+	return structVal, nil
 }
 
 func generateCommonAccessLogGrpcConfig(grpcService v1alpha1.CommonAccessLogGrpcService, grpcBackends map[string]*ir.BackendObjectIR, accessLogId int) (*envoygrpc.CommonGrpcAccessLogConfig, error) {
@@ -557,9 +566,9 @@ func toEnvoyComparisonOpType(op v1alpha1.Op) (envoyaccesslogv3.ComparisonFilter_
 	case v1alpha1.EQ:
 		return envoyaccesslogv3.ComparisonFilter_EQ, nil
 	case v1alpha1.GE:
-		return envoyaccesslogv3.ComparisonFilter_EQ, nil
+		return envoyaccesslogv3.ComparisonFilter_GE, nil
 	case v1alpha1.LE:
-		return envoyaccesslogv3.ComparisonFilter_EQ, nil
+		return envoyaccesslogv3.ComparisonFilter_LE, nil
 	default:
 		return 0, fmt.Errorf("unknown OP (%s)", op)
 	}
