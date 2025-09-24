@@ -1280,3 +1280,366 @@ func mustMessageToAny(t *testing.T, msg proto.Message) *anypb.Any {
 	require.NoError(t, err, "failed to convert message to Any")
 	return a
 }
+
+// TestConvertJsonFormat tests the convertJsonFormat function with various inputs
+func TestConvertJsonFormat(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     *runtime.RawExtension
+		expected  *structpb.Struct
+		expectErr bool
+	}{
+		{
+			name:     "nil input",
+			input:    nil,
+			expected: nil,
+		},
+		{
+			name: "valid JSON",
+			input: &runtime.RawExtension{
+				Raw: []byte(`{"key": "value", "number": 123}`),
+			},
+			expected: &structpb.Struct{
+				Fields: map[string]*structpb.Value{
+					"key": {
+						Kind: &structpb.Value_StringValue{
+							StringValue: "value",
+						},
+					},
+					"number": {
+						Kind: &structpb.Value_NumberValue{
+							NumberValue: 123,
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "invalid JSON",
+			input: &runtime.RawExtension{
+				Raw: []byte(`{"invalid": json}`),
+			},
+			expectErr: true,
+		},
+		{
+			name: "empty JSON object",
+			input: &runtime.RawExtension{
+				Raw: []byte(`{}`),
+			},
+			expected: &structpb.Struct{
+				Fields: map[string]*structpb.Value{},
+			},
+		},
+		{
+			name: "complex nested JSON",
+			input: &runtime.RawExtension{
+				Raw: []byte(`{
+					"start_time": "%START_TIME%",
+					"method": "%REQ(:METHOD)%",
+					"response_code": "%RESPONSE_CODE%"
+				}`),
+			},
+			expected: &structpb.Struct{
+				Fields: map[string]*structpb.Value{
+					"start_time": {
+						Kind: &structpb.Value_StringValue{
+							StringValue: "%START_TIME%",
+						},
+					},
+					"method": {
+						Kind: &structpb.Value_StringValue{
+							StringValue: "%REQ(:METHOD)%",
+						},
+					},
+					"response_code": {
+						Kind: &structpb.Value_StringValue{
+							StringValue: "%RESPONSE_CODE%",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := convertJsonFormat(tt.input)
+			
+			if tt.expectErr {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), "failed to unmarshal JSON format")
+				assert.Nil(t, result)
+			} else {
+				assert.NoError(t, err)
+				if tt.expected == nil {
+					assert.Nil(t, result)
+				} else {
+					assert.True(t, proto.Equal(tt.expected, result))
+				}
+			}
+		})
+	}
+}
+
+// TestToEnvoyComparisonOpType tests the comparison operator mapping function
+func TestToEnvoyComparisonOpType(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    v1alpha1.Op
+		expected envoyaccesslogv3.ComparisonFilter_Op
+		expectErr bool
+	}{
+		{
+			name:     "EQ operator",
+			input:    v1alpha1.EQ,
+			expected: envoyaccesslogv3.ComparisonFilter_EQ,
+		},
+		{
+			name:     "GE operator",
+			input:    v1alpha1.GE,
+			expected: envoyaccesslogv3.ComparisonFilter_GE,
+		},
+		{
+			name:     "LE operator",
+			input:    v1alpha1.LE,
+			expected: envoyaccesslogv3.ComparisonFilter_LE,
+		},
+		{
+			name:      "invalid operator",
+			input:     v1alpha1.Op("INVALID"),
+			expectErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := toEnvoyComparisonOpType(tt.input)
+			
+			if tt.expectErr {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), "unknown OP")
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.expected, result)
+			}
+		})
+	}
+}
+
+// TestAddAccessLogFilter tests the addAccessLogFilter function
+func TestAddAccessLogFilter(t *testing.T) {
+	tests := []struct {
+		name            string
+		accessLogCfg    *envoyaccesslogv3.AccessLog
+		filter          *v1alpha1.AccessLogFilter
+		expectErr       bool
+		expectedFilter  *envoyaccesslogv3.AccessLogFilter
+	}{
+		{
+			name: "nil filter field initialization with StatusCodeFilter",
+			accessLogCfg: &envoyaccesslogv3.AccessLog{
+				Name: "test",
+				// Filter is nil
+			},
+			filter: &v1alpha1.AccessLogFilter{
+				FilterType: &v1alpha1.FilterType{
+					StatusCodeFilter: &v1alpha1.StatusCodeFilter{
+						Op:    v1alpha1.GE,
+						Value: 200,
+					},
+				},
+			},
+			expectedFilter: &envoyaccesslogv3.AccessLogFilter{
+				FilterSpecifier: &envoyaccesslogv3.AccessLogFilter_StatusCodeFilter{
+					StatusCodeFilter: &envoyaccesslogv3.StatusCodeFilter{
+						Comparison: &envoyaccesslogv3.ComparisonFilter{
+							Op: envoyaccesslogv3.ComparisonFilter_GE,
+							Value: &envoycorev3.RuntimeUInt32{
+								DefaultValue: 200,
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "existing filter field with AndFilter",
+			accessLogCfg: &envoyaccesslogv3.AccessLog{
+				Name:   "test",
+				Filter: &envoyaccesslogv3.AccessLogFilter{}, // Already initialized
+			},
+			filter: &v1alpha1.AccessLogFilter{
+				AndFilter: []v1alpha1.FilterType{
+					{
+						NotHealthCheckFilter: true,
+					},
+					{
+						StatusCodeFilter: &v1alpha1.StatusCodeFilter{
+							Op:    v1alpha1.GE,
+							Value: 200,
+						},
+					},
+				},
+			},
+			expectedFilter: &envoyaccesslogv3.AccessLogFilter{
+				FilterSpecifier: &envoyaccesslogv3.AccessLogFilter_AndFilter{
+					AndFilter: &envoyaccesslogv3.AndFilter{
+						Filters: []*envoyaccesslogv3.AccessLogFilter{
+							{
+								FilterSpecifier: &envoyaccesslogv3.AccessLogFilter_NotHealthCheckFilter{
+									NotHealthCheckFilter: &envoyaccesslogv3.NotHealthCheckFilter{},
+								},
+							},
+							{
+								FilterSpecifier: &envoyaccesslogv3.AccessLogFilter_StatusCodeFilter{
+									StatusCodeFilter: &envoyaccesslogv3.StatusCodeFilter{
+										Comparison: &envoyaccesslogv3.ComparisonFilter{
+											Op: envoyaccesslogv3.ComparisonFilter_GE,
+											Value: &envoycorev3.RuntimeUInt32{
+												DefaultValue: 200,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "OrFilter configuration",
+			accessLogCfg: &envoyaccesslogv3.AccessLog{
+				Name: "test",
+				// Filter is nil
+			},
+			filter: &v1alpha1.AccessLogFilter{
+				OrFilter: []v1alpha1.FilterType{
+					{
+						StatusCodeFilter: &v1alpha1.StatusCodeFilter{
+							Op:    v1alpha1.EQ,
+							Value: 404,
+						},
+					},
+					{
+						StatusCodeFilter: &v1alpha1.StatusCodeFilter{
+							Op:    v1alpha1.GE,
+							Value: 500,
+						},
+					},
+				},
+			},
+			expectedFilter: &envoyaccesslogv3.AccessLogFilter{
+				FilterSpecifier: &envoyaccesslogv3.AccessLogFilter_OrFilter{
+					OrFilter: &envoyaccesslogv3.OrFilter{
+						Filters: []*envoyaccesslogv3.AccessLogFilter{
+							{
+								FilterSpecifier: &envoyaccesslogv3.AccessLogFilter_StatusCodeFilter{
+									StatusCodeFilter: &envoyaccesslogv3.StatusCodeFilter{
+										Comparison: &envoyaccesslogv3.ComparisonFilter{
+											Op: envoyaccesslogv3.ComparisonFilter_EQ,
+											Value: &envoycorev3.RuntimeUInt32{
+												DefaultValue: 404,
+											},
+										},
+									},
+								},
+							},
+							{
+								FilterSpecifier: &envoyaccesslogv3.AccessLogFilter_StatusCodeFilter{
+									StatusCodeFilter: &envoyaccesslogv3.StatusCodeFilter{
+										Comparison: &envoyaccesslogv3.ComparisonFilter{
+											Op: envoyaccesslogv3.ComparisonFilter_GE,
+											Value: &envoycorev3.RuntimeUInt32{
+												DefaultValue: 500,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := addAccessLogFilter(tt.accessLogCfg, tt.filter)
+			
+			if tt.expectErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.NotNil(t, tt.accessLogCfg.Filter, "Filter should be initialized")
+				if tt.expectedFilter != nil {
+					assert.True(t, proto.Equal(tt.expectedFilter, tt.accessLogCfg.Filter),
+						"Filter mismatch:\nExpected: %v\nActual: %v", tt.expectedFilter, tt.accessLogCfg.Filter)
+				}
+			}
+		})
+	}
+}
+
+// TestCreateFileAccessLogWithErrorHandling tests createFileAccessLog with JSON format error handling
+func TestCreateFileAccessLogWithErrorHandling(t *testing.T) {
+	tests := []struct {
+		name      string
+		fileSink  *v1alpha1.FileSink
+		expectErr bool
+		errMsg    string
+	}{
+		{
+			name: "valid JSON format",
+			fileSink: &v1alpha1.FileSink{
+				Path: "/dev/stdout",
+				JsonFormat: &runtime.RawExtension{
+					Raw: []byte(`{"method": "%REQ(:METHOD)%"}`),
+				},
+			},
+			expectErr: false,
+		},
+		{
+			name: "invalid JSON format",
+			fileSink: &v1alpha1.FileSink{
+				Path: "/dev/stdout",
+				JsonFormat: &runtime.RawExtension{
+					Raw: []byte(`{"invalid": json}`),
+				},
+			},
+			expectErr: true,
+			errMsg:    "failed to unmarshal JSON format",
+		},
+		{
+			name: "string format (no JSON error)",
+			fileSink: &v1alpha1.FileSink{
+				Path:         "/dev/stdout",
+				StringFormat: "%REQ(:METHOD)% %RESPONSE_CODE%",
+			},
+			expectErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := createFileAccessLog(tt.fileSink)
+			
+			if tt.expectErr {
+				assert.Error(t, err)
+				if tt.errMsg != "" {
+					assert.Contains(t, err.Error(), tt.errMsg)
+				}
+				assert.Nil(t, result)
+			} else {
+				assert.NoError(t, err)
+				assert.NotNil(t, result)
+				
+				// Verify the result is a valid FileAccessLog
+				fileLog, ok := result.(*envoyalfile.FileAccessLog)
+				assert.True(t, ok, "Result should be FileAccessLog")
+				assert.Equal(t, tt.fileSink.Path, fileLog.Path)
+			}
+		})
+	}
+}
