@@ -1364,7 +1364,7 @@ func TestConvertJsonFormat(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result, err := convertJsonFormat(tt.input)
-			
+
 			if tt.expectErr {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), "failed to unmarshal JSON format")
@@ -1384,9 +1384,9 @@ func TestConvertJsonFormat(t *testing.T) {
 // TestToEnvoyComparisonOpType tests the comparison operator mapping function
 func TestToEnvoyComparisonOpType(t *testing.T) {
 	tests := []struct {
-		name     string
-		input    v1alpha1.Op
-		expected envoyaccesslogv3.ComparisonFilter_Op
+		name      string
+		input     v1alpha1.Op
+		expected  envoyaccesslogv3.ComparisonFilter_Op
 		expectErr bool
 	}{
 		{
@@ -1414,7 +1414,7 @@ func TestToEnvoyComparisonOpType(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result, err := toEnvoyComparisonOpType(tt.input)
-			
+
 			if tt.expectErr {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), "unknown OP")
@@ -1429,11 +1429,11 @@ func TestToEnvoyComparisonOpType(t *testing.T) {
 // TestAddAccessLogFilter tests the addAccessLogFilter function
 func TestAddAccessLogFilter(t *testing.T) {
 	tests := []struct {
-		name            string
-		accessLogCfg    *envoyaccesslogv3.AccessLog
-		filter          *v1alpha1.AccessLogFilter
-		expectErr       bool
-		expectedFilter  *envoyaccesslogv3.AccessLogFilter
+		name           string
+		accessLogCfg   *envoyaccesslogv3.AccessLog
+		filter         *v1alpha1.AccessLogFilter
+		expectErr      bool
+		expectedFilter *envoyaccesslogv3.AccessLogFilter
 	}{
 		{
 			name: "nil filter field initialization with StatusCodeFilter",
@@ -1567,7 +1567,7 @@ func TestAddAccessLogFilter(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := addAccessLogFilter(tt.accessLogCfg, tt.filter)
-			
+
 			if tt.expectErr {
 				assert.Error(t, err)
 			} else {
@@ -1624,7 +1624,7 @@ func TestCreateFileAccessLogWithErrorHandling(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result, err := createFileAccessLog(tt.fileSink)
-			
+
 			if tt.expectErr {
 				assert.Error(t, err)
 				if tt.errMsg != "" {
@@ -1634,7 +1634,7 @@ func TestCreateFileAccessLogWithErrorHandling(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 				assert.NotNil(t, result)
-				
+
 				// Verify the result is a valid FileAccessLog
 				fileLog, ok := result.(*envoyalfile.FileAccessLog)
 				assert.True(t, ok, "Result should be FileAccessLog")
