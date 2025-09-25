@@ -1126,6 +1126,17 @@ func TestBasic(t *testing.T) {
 		})
 	})
 
+	t.Run("HTTPListenerPolicy access logging with filters", func(t *testing.T) {
+		test(t, translatorTestCase{
+			inputFile:  "httplistenerpolicy/access-logging-with-filters.yaml",
+			outputFile: "httplistenerpolicy/access-logging-with-filters.yaml",
+			gwNN: types.NamespacedName{
+				Namespace: "default",
+				Name:      "example-gateway",
+			},
+		})
+	})
+
 	t.Run("Service with appProtocol=kubernetes.io/h2c", func(t *testing.T) {
 		test(t, translatorTestCase{
 			inputFile:  "backend-protocol/svc-h2c.yaml",
