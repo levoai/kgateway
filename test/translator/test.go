@@ -54,8 +54,11 @@ import (
 	"github.com/kgateway-dev/kgateway/v2/pkg/schemes"
 	"github.com/kgateway-dev/kgateway/v2/pkg/utils/envutils"
 	"github.com/kgateway-dev/kgateway/v2/pkg/validator"
+	"github.com/kgateway-dev/kgateway/v2/pkg/xds/config"
 	"github.com/kgateway-dev/kgateway/v2/test/testutils"
 )
+
+var testValidator = validator.NewDocker()
 
 type translationResult struct {
 	Routes        []*envoyroutev3.RouteConfiguration
@@ -198,6 +201,23 @@ func (tr *translationResult) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+func (tr *translationResult) ValidateAgainstEnvoy(ctx context.Context) error {
+	cfg := config.New()
+	cfg.AddRouteConfigurations(tr.Routes...)
+	cfg.AddListener(tr.Listeners...)
+	cfg.AddClusters(tr.Clusters...)
+	cfg.AddClusters(tr.ExtraClusters...)
+	c, err := cfg.Build()
+	if err != nil {
+		return err
+	}
+	data, err := protojson.Marshal(c)
+	if err != nil {
+		return err
+	}
+	return testValidator.Validate(ctx, string(data))
+}
+
 func marshalProtoMessages[T proto.Message](messages []T, m protojson.MarshalOptions) ([]any, error) {
 	var result []any
 	for _, msg := range messages {
@@ -299,6 +319,9 @@ func TestTranslationWithExtraPlugins(
 	gotStatuses, err := compareStatuses(outputFile, output.Statuses)
 	r.Emptyf(gotStatuses, "unexpected diff in statuses output; actual result: %s", outputYaml)
 	r.NoError(err, "error comparing statuses output")
+
+	err = output.ValidateAgainstEnvoy(t.Context())
+	r.NoError(err, "error validating output against envoy")
 }
 
 type TestCase struct {

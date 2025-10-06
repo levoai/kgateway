@@ -54,7 +54,7 @@ func TestConfigBuilder_Build(t *testing.T) {
 		{
 			name: "with clusters",
 			setup: func(b *ConfigBuilder) {
-				b.AddCluster(&envoyclusterv3.Cluster{Name: "test_cluster"})
+				b.AddClusters(&envoyclusterv3.Cluster{Name: "test_cluster"})
 			},
 			validate: func(t *testing.T, got *envoybootstrapv3.Bootstrap) {
 				want := 1
@@ -66,7 +66,7 @@ func TestConfigBuilder_Build(t *testing.T) {
 		{
 			name: "with route",
 			setup: func(b *ConfigBuilder) {
-				b.AddRoute(&envoyroutev3.Route{
+				b.AddRoutes(&envoyroutev3.Route{
 					Name: "test_route",
 					Match: &envoyroutev3.RouteMatch{
 						PathSpecifier: &envoyroutev3.RouteMatch_Prefix{Prefix: "/test"},
@@ -91,7 +91,7 @@ func TestConfigBuilder_Build(t *testing.T) {
 		{
 			name: "with AddCluster method",
 			setup: func(b *ConfigBuilder) {
-				b.AddCluster(&envoyclusterv3.Cluster{Name: "test_cluster_2"})
+				b.AddClusters(&envoyclusterv3.Cluster{Name: "test_cluster_2"})
 			},
 			validate: func(t *testing.T, got *envoybootstrapv3.Bootstrap) {
 				clusters := got.GetStaticResources().GetClusters()

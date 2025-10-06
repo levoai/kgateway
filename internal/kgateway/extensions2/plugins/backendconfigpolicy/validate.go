@@ -54,7 +54,7 @@ func validateXDS(
 	processBackend(ctx, policyIR, dummyBackend, testCluster)
 
 	builder := bootstrap.New()
-	builder.AddCluster(testCluster)
+	builder.AddClusters(testCluster)
 	bootstrap, err := builder.Build()
 	if err != nil {
 		return err

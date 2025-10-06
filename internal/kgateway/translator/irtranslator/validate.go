@@ -193,7 +193,7 @@ func runValidation(
 func validateMatcherOnly(ctx context.Context, route *envoyroutev3.Route, v validator.Validator) error {
 	clusterName := "dummy-cluster"
 	builder := bootstrap.New()
-	builder.AddRoute(&envoyroutev3.Route{
+	builder.AddRoutes(&envoyroutev3.Route{
 		Name:  route.GetName(),
 		Match: route.GetMatch(),
 		Action: &envoyroutev3.Route_Route{
@@ -204,7 +204,7 @@ func validateMatcherOnly(ctx context.Context, route *envoyroutev3.Route, v valid
 			},
 		},
 	})
-	builder.AddCluster(&envoyclusterv3.Cluster{
+	builder.AddClusters(&envoyclusterv3.Cluster{
 		Name: clusterName,
 	})
 	return runValidation(ctx, v, builder)
@@ -213,10 +213,10 @@ func validateMatcherOnly(ctx context.Context, route *envoyroutev3.Route, v valid
 // validateFullRoute validates the complete route configuration.
 func validateFullRoute(ctx context.Context, route *envoyroutev3.Route, v validator.Validator) error {
 	builder := bootstrap.New()
-	builder.AddRoute(route)
+	builder.AddRoutes(route)
 	stubClusters := createStubClusters(extractClusterNames(route))
 	for _, cluster := range stubClusters {
-		builder.AddCluster(cluster)
+		builder.AddClusters(cluster)
 	}
 
 	return runValidation(ctx, v, builder)

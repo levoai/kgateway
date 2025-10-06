@@ -157,7 +157,7 @@ func (t *BackendTranslator) runPolicies(
 // such as invalid cipher suites, invalid TLS parameters, etc.
 func (t *BackendTranslator) validateClusterConfig(ctx context.Context, cluster *envoyclusterv3.Cluster) error {
 	builder := bootstrap.New()
-	builder.AddCluster(cluster)
+	builder.AddClusters(cluster)
 	bootstrap, err := builder.Build()
 	if err != nil {
 		return err
