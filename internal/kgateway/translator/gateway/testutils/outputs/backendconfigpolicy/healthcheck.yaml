@@ -8,10 +8,19 @@ Clusters:
   - grpcHealthCheck:
       authority: example.com
       serviceName: grpc.health.v1.Health
+    healthyThreshold: 2
+    interval: 1s
+    timeout: 4s
+    unhealthyThreshold: 5
   ignoreHealthOnHostRemoval: true
   metadata: {}
   name: kube_default_httpbin-grpc_8080
   type: EDS
+  typedExtensionProtocolOptions:
+    envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+      '@type': type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+      explicitHttpConfig:
+        http2ProtocolOptions: {}
 - connectTimeout: 5s
   edsClusterConfig:
     edsConfig:

@@ -58,6 +58,7 @@ spec:
     - name: http
       port: 8080
       targetPort: 8080
+      appProtocol: http2
   selector:
     app: httpbin-grpc
 ---
@@ -74,4 +75,8 @@ spec:
     grpc:
       serviceName: grpc.health.v1.Health
       authority: example.com
+    timeout: 4s
+    interval: 1s
+    unhealthyThreshold: 5
+    healthyThreshold: 2
 

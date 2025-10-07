@@ -15,9 +15,10 @@ import (
 )
 
 type translatorTestCase struct {
-	inputFile  string
-	outputFile string
-	gwNN       types.NamespacedName
+	inputFile             string
+	outputFile            string
+	gwNN                  types.NamespacedName
+	expectValidationError bool
 }
 
 func TestBasic(t *testing.T) {
@@ -28,7 +29,7 @@ func TestBasic(t *testing.T) {
 
 		inputFiles := []string{filepath.Join(dir, "testutils/inputs/", in.inputFile)}
 		expectedProxyFile := filepath.Join(dir, "testutils/outputs/", in.outputFile)
-		translatortest.TestTranslation(t, ctx, inputFiles, expectedProxyFile, in.gwNN, settingOpts...)
+		translatortest.TestTranslation(t, ctx, inputFiles, expectedProxyFile, in.gwNN, in.expectValidationError, settingOpts...)
 	}
 
 	t.Run("gateway with no routes should not add empty filter chain", func(t *testing.T) {
@@ -173,6 +174,8 @@ func TestBasic(t *testing.T) {
 				Namespace: "default",
 				Name:      "example-gateway",
 			},
+			// A missing backend will cause envoy to reject the config
+			expectValidationError: true,
 		})
 	})
 
@@ -184,6 +187,8 @@ func TestBasic(t *testing.T) {
 				Namespace: "default",
 				Name:      "example-gateway",
 			},
+			// An invalid backend will cause envoy to reject the config
+			expectValidationError: true,
 		})
 	})
 
@@ -195,6 +200,8 @@ func TestBasic(t *testing.T) {
 				Namespace: "default",
 				Name:      "example-gateway",
 			},
+			// An invalid backend will cause envoy to reject the config
+			expectValidationError: true,
 		})
 	})
 
@@ -406,6 +413,8 @@ func TestBasic(t *testing.T) {
 				Namespace: "default",
 				Name:      "example-gateway",
 			},
+			// A missing backend will cause envoy to reject the config
+			expectValidationError: true,
 		})
 	})
 
@@ -417,6 +426,8 @@ func TestBasic(t *testing.T) {
 				Namespace: "default",
 				Name:      "example-gateway",
 			},
+			// An invalid backend will cause envoy to reject the config
+			expectValidationError: true,
 		})
 	})
 
@@ -450,6 +461,8 @@ func TestBasic(t *testing.T) {
 				Namespace: "default",
 				Name:      "example-gateway",
 			},
+			// A missing backend will cause envoy to reject the config
+			expectValidationError: true,
 		})
 	})
 
@@ -461,6 +474,8 @@ func TestBasic(t *testing.T) {
 				Namespace: "default",
 				Name:      "example-gateway",
 			},
+			// An invalid backend will cause envoy to reject the config
+			expectValidationError: true,
 		})
 	})
 
@@ -494,6 +509,8 @@ func TestBasic(t *testing.T) {
 				Namespace: "default",
 				Name:      "example-gateway",
 			},
+			// A missing backend will cause envoy to reject the config
+			expectValidationError: true,
 		})
 	})
 
@@ -505,6 +522,8 @@ func TestBasic(t *testing.T) {
 				Namespace: "default",
 				Name:      "example-gateway",
 			},
+			// An invalid backend will cause envoy to reject the config
+			expectValidationError: true,
 		})
 	})
 
@@ -549,6 +568,10 @@ func TestBasic(t *testing.T) {
 				Namespace: "default",
 				Name:      "example-gateway",
 			},
+			// Validation error: Unknown static certificate validation context: SYSTEM_CA_CERT
+			// This validation error is not due to a misconfiguration.
+			// The sds config is not provided in the translation result leading to this error
+			expectValidationError: true,
 		})
 	})
 
@@ -571,6 +594,10 @@ func TestBasic(t *testing.T) {
 				Namespace: "default",
 				Name:      "example-gateway",
 			},
+			// Validation error: Unknown static certificate validation context: SYSTEM_CA_CERT
+			// This validation error is not due to a misconfiguration.
+			// The sds config is not provided in the translation result leading to this error
+			expectValidationError: true,
 		})
 	})
 
@@ -582,6 +609,10 @@ func TestBasic(t *testing.T) {
 				Namespace: "default",
 				Name:      "example-gateway",
 			},
+			// Validation error: Unknown static certificate validation context: SYSTEM_CA_CERT
+			// This validation error is not due to a misconfiguration.
+			// The sds config is not provided in the translation result leading to this error
+			expectValidationError: true,
 		})
 	})
 
@@ -956,6 +987,10 @@ func TestBasic(t *testing.T) {
 				Namespace: "default",
 				Name:      "example-gateway",
 			},
+			// Validation error: Unknown static certificate validation context: SYSTEM_CA_CERT
+			// This validation error is not due to a misconfiguration.
+			// The sds config is not provided in the translation result leading to this error
+			expectValidationError: true,
 		})
 	})
 
@@ -989,6 +1024,10 @@ func TestBasic(t *testing.T) {
 				Namespace: "default",
 				Name:      "example-gateway",
 			},
+			// Validation error: Unknown static certificate validation context: SYSTEM_CA_CERT
+			// This validation error is not due to a misconfiguration.
+			// The sds config is not provided in the translation result leading to this error
+			expectValidationError: true,
 		})
 	})
 
@@ -1473,7 +1512,7 @@ func TestValidation(t *testing.T) {
 		settingOpts := func(s *apisettings.Settings) {
 			s.ValidationMode = mode
 		}
-		translatortest.TestTranslation(t, ctx, []string{inputFile}, outputFile, gwNN, settingOpts)
+		translatortest.TestTranslation(t, ctx, []string{inputFile}, outputFile, gwNN, false, settingOpts)
 	}
 
 	for _, mode := range []apisettings.ValidationMode{apisettings.ValidationStandard, apisettings.ValidationStrict} {
@@ -1506,7 +1545,7 @@ func TestRouteDelegation(t *testing.T) {
 			Namespace: "infra",
 			Name:      "example-gateway",
 		}
-		translatortest.TestTranslation(t, ctx, inputFiles, outputFile, gwNN)
+		translatortest.TestTranslation(t, ctx, inputFiles, outputFile, gwNN, false)
 	}
 	t.Run("Basic config", func(t *testing.T) {
 		test(t, "basic.yaml")
@@ -1645,7 +1684,7 @@ func TestDiscoveryNamespaceSelector(t *testing.T) {
 			},
 		}
 
-		translatortest.TestTranslation(t, ctx, inputFiles, expectedOutputFile, gwNN, settingOpts...)
+		translatortest.TestTranslation(t, ctx, inputFiles, expectedOutputFile, gwNN, false, settingOpts...)
 	}
 	t.Run("Select all resources", func(t *testing.T) {
 		test(t, `[
