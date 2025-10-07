@@ -1512,7 +1512,7 @@ func TestValidation(t *testing.T) {
 		settingOpts := func(s *apisettings.Settings) {
 			s.ValidationMode = mode
 		}
-		translatortest.TestTranslation(t, ctx, []string{inputFile}, outputFile, gwNN, false, settingOpts)
+		translatortest.TestTranslation(t, ctx, []string{inputFile}, outputFile, gwNN, true, settingOpts)
 	}
 
 	for _, mode := range []apisettings.ValidationMode{apisettings.ValidationStandard, apisettings.ValidationStrict} {
