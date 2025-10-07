@@ -31,6 +31,7 @@ func TestStatuses(t *testing.T) {
 				Namespace: "default",
 				Name:      "example-gateway",
 			},
+			false,
 		)
 	}
 
