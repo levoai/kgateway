@@ -66,7 +66,7 @@ func TestWaypointTranslator(t *testing.T) {
 				filepath.Join(dir, "testdata/output", tt.file+".yaml"),
 				tt.gw,
 				extraPluginsFn,
-				nil, nil, "",
+				nil, nil, "", false,
 			)
 		})
 	}
