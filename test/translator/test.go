@@ -54,7 +54,7 @@ import (
 	"github.com/kgateway-dev/kgateway/v2/pkg/schemes"
 	"github.com/kgateway-dev/kgateway/v2/pkg/utils/envutils"
 	"github.com/kgateway-dev/kgateway/v2/pkg/validator"
-	"github.com/kgateway-dev/kgateway/v2/pkg/xds/config"
+	"github.com/kgateway-dev/kgateway/v2/pkg/xds/bootstrap"
 	"github.com/kgateway-dev/kgateway/v2/test/testutils"
 )
 
@@ -202,7 +202,7 @@ func (tr *translationResult) UnmarshalJSON(data []byte) error {
 }
 
 func (tr *translationResult) ValidateAgainstEnvoy(ctx context.Context) error {
-	cfg := config.New()
+	cfg := bootstrap.New()
 	cfg.AddRouteConfigurations(tr.Routes...)
 	cfg.AddListener(tr.Listeners...)
 	cfg.AddClusters(tr.Clusters...)
@@ -251,9 +251,10 @@ func TestTranslation(
 	inputFiles []string,
 	outputFile string,
 	gwNN types.NamespacedName,
+	expectValidationError bool,
 	settingsOpts ...SettingsOpts,
 ) {
-	TestTranslationWithExtraPlugins(t, ctx, inputFiles, outputFile, gwNN, nil, nil, nil, "", settingsOpts...)
+	TestTranslationWithExtraPlugins(t, ctx, inputFiles, outputFile, gwNN, nil, nil, nil, "", expectValidationError, settingsOpts...)
 }
 
 func TestTranslationWithExtraPlugins(
@@ -266,6 +267,7 @@ func TestTranslationWithExtraPlugins(
 	extraSchemes runtime.SchemeBuilder,
 	extraGroups []string,
 	crdDir string,
+	expectValidationError bool,
 	settingsOpts ...SettingsOpts,
 ) {
 	scheme := NewScheme(extraSchemes)
@@ -321,7 +323,9 @@ func TestTranslationWithExtraPlugins(
 	r.NoError(err, "error comparing statuses output")
 
 	err = output.ValidateAgainstEnvoy(t.Context())
-	r.NoError(err, "error validating output against envoy")
+	if !expectValidationError {
+		r.NoError(err, "error validating output against envoy")
+	}
 }
 
 type TestCase struct {
