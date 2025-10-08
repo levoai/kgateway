@@ -243,6 +243,9 @@ func (in *KubernetesProxyFullConfig) GetFloatingUserId() *bool {
 	if in == nil {
 		return nil
 	}
+	if in.DeprecatedProxyConfig == nil {
+		return nil
+	}
 	return in.FloatingUserId
 }
 
