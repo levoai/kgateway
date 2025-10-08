@@ -332,6 +332,7 @@ var _ = Describe("Deployer", func() {
 				},
 				Spec: gw2_v1alpha1.GatewayParametersSpec{
 					Kube: &gw2_v1alpha1.KubernetesProxyFullConfig{
+						DeprecatedProxyConfig: &gw2_v1alpha1.DeprecatedProxyConfig{},
 						KubernetesProxyConfig: &gw2_v1alpha1.KubernetesProxyConfig{
 							Agentgateway: &gw2_v1alpha1.Agentgateway{
 								Enabled: ptr.To(true),
@@ -1800,6 +1801,7 @@ var _ = Describe("Deployer", func() {
 					},
 					Spec: gw2_v1alpha1.GatewayParametersSpec{
 						Kube: &gw2_v1alpha1.KubernetesProxyFullConfig{
+							DeprecatedProxyConfig: &gw2_v1alpha1.DeprecatedProxyConfig{},
 							KubernetesProxyConfig: &gw2_v1alpha1.KubernetesProxyConfig{
 								SdsContainer: &gw2_v1alpha1.SdsContainer{
 									Image: &gw2_v1alpha1.Image{
@@ -3051,6 +3053,7 @@ func fullyDefinedGatewayParameters(name, namespace string) *gw2_v1alpha1.Gateway
 		},
 		Spec: gw2_v1alpha1.GatewayParametersSpec{
 			Kube: &gw2_v1alpha1.KubernetesProxyFullConfig{
+				DeprecatedProxyConfig: &gw2_v1alpha1.DeprecatedProxyConfig{},
 				KubernetesProxyConfig: &gw2_v1alpha1.KubernetesProxyConfig{
 					Deployment: &gw2_v1alpha1.ProxyDeployment{
 						Replicas: ptr.To[int32](3),
