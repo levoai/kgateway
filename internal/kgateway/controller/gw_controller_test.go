@@ -120,9 +120,11 @@ var _ = Describe("GwController", func() {
 					Namespace: "default",
 				},
 				Spec: v1alpha1.GatewayParametersSpec{
-					Kube: &v1alpha1.KubernetesProxyConfig{
-						Deployment: &v1alpha1.ProxyDeployment{
-							Replicas: ptr.To[int32](2),
+					Kube: &v1alpha1.KubernetesProxyFullConfig{
+						KubernetesProxyConfig: &v1alpha1.KubernetesProxyConfig{
+							Deployment: &v1alpha1.ProxyDeployment{
+								Replicas: ptr.To[int32](2),
+							},
 						},
 					},
 				},

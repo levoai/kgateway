@@ -101,6 +101,8 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &apiv1alpha1.CustomLabelApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("CustomResponse"):
 		return &apiv1alpha1.CustomResponseApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("DeprecatedProxyConfig"):
+		return &apiv1alpha1.DeprecatedProxyConfigApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("DirectResponse"):
 		return &apiv1alpha1.DirectResponseApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("DirectResponseSpec"):
@@ -189,6 +191,8 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &apiv1alpha1.KeyAnyValueListApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("KubernetesProxyConfig"):
 		return &apiv1alpha1.KubernetesProxyConfigApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("KubernetesProxyFullConfig"):
+		return &apiv1alpha1.KubernetesProxyFullConfigApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("LLMProvider"):
 		return &apiv1alpha1.LLMProviderApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("LoadBalancer"):

@@ -28,10 +28,10 @@ type Inputs struct {
 
 // UpdateSecurityContexts updates the security contexts in the gateway parameters.
 // It applies the floating user ID if it is set and adds the sysctl to allow the privileged ports if the gateway uses them.
-func UpdateSecurityContexts(cfg *v1alpha1.KubernetesProxyConfig, ports []HelmPort) {
+func UpdateSecurityContexts(cfg *v1alpha1.KubernetesProxyFullConfig, ports []HelmPort) {
 	// If the floating user ID is set, unset the RunAsUser field from all security contexts
 	if ptr.Deref(cfg.GetFloatingUserId(), false) {
-		applyFloatingUserId(cfg)
+		applyFloatingUserId(cfg.KubernetesProxyConfig)
 	}
 
 	if ptr.Deref(cfg.GetOmitDefaultSecurityContext(), false) {
@@ -39,7 +39,7 @@ func UpdateSecurityContexts(cfg *v1alpha1.KubernetesProxyConfig, ports []HelmPor
 	}
 
 	if usesPrivilegedPorts(ports) {
-		allowPrivilegedPorts(cfg)
+		allowPrivilegedPorts(cfg.KubernetesProxyConfig)
 	}
 }
 
@@ -196,122 +196,120 @@ func defaultGatewayParameters(imageInfo *ImageInfo, omitDefaultSecurityContext b
 	gwp := &v1alpha1.GatewayParameters{
 		Spec: v1alpha1.GatewayParametersSpec{
 			SelfManaged: nil,
-			Kube: &v1alpha1.KubernetesProxyConfig{
-				Deployment: &v1alpha1.ProxyDeployment{
-					Replicas:     ptr.To[int32](1),
-					OmitReplicas: ptr.To(false),
-				},
-				Service: &v1alpha1.Service{
-					Type: (*corev1.ServiceType)(ptr.To(string(corev1.ServiceTypeLoadBalancer))),
-				},
-				PodTemplate: &v1alpha1.Pod{
-					TerminationGracePeriodSeconds: ptr.To(int64(60)),
-					GracefulShutdown: &v1alpha1.GracefulShutdownSpec{
-						Enabled:          ptr.To(true),
-						SleepTimeSeconds: ptr.To(int64(10)),
+			Kube: &v1alpha1.KubernetesProxyFullConfig{
+				KubernetesProxyConfig: &v1alpha1.KubernetesProxyConfig{
+					Service: &v1alpha1.Service{
+						Type: (*corev1.ServiceType)(ptr.To(string(corev1.ServiceTypeLoadBalancer))),
 					},
-					ReadinessProbe: &corev1.Probe{
-						ProbeHandler: corev1.ProbeHandler{
-							HTTPGet: &corev1.HTTPGetAction{
-								Path: "/ready",
-								Port: intstr.FromInt(8082),
+					PodTemplate: &v1alpha1.Pod{
+						TerminationGracePeriodSeconds: ptr.To(int64(60)),
+						GracefulShutdown: &v1alpha1.GracefulShutdownSpec{
+							Enabled:          ptr.To(true),
+							SleepTimeSeconds: ptr.To(int64(10)),
+						},
+						ReadinessProbe: &corev1.Probe{
+							ProbeHandler: corev1.ProbeHandler{
+								HTTPGet: &corev1.HTTPGetAction{
+									Path: "/ready",
+									Port: intstr.FromInt(8082),
+								},
 							},
+							InitialDelaySeconds: 5,
+							PeriodSeconds:       10,
 						},
-						InitialDelaySeconds: 5,
-						PeriodSeconds:       10,
-					},
-					StartupProbe: &corev1.Probe{
-						ProbeHandler: corev1.ProbeHandler{
-							HTTPGet: &corev1.HTTPGetAction{
-								Path: "/ready",
-								Port: intstr.FromInt(8082),
+						StartupProbe: &corev1.Probe{
+							ProbeHandler: corev1.ProbeHandler{
+								HTTPGet: &corev1.HTTPGetAction{
+									Path: "/ready",
+									Port: intstr.FromInt(8082),
+								},
 							},
-						},
-						InitialDelaySeconds: 0,
-						PeriodSeconds:       1,
-						TimeoutSeconds:      2,
-						FailureThreshold:    60,
-						SuccessThreshold:    1,
-					},
-				},
-				EnvoyContainer: &v1alpha1.EnvoyContainer{
-					Bootstrap: &v1alpha1.EnvoyBootstrap{
-						LogLevel: ptr.To("info"),
-					},
-					Image: &v1alpha1.Image{
-						Registry:   ptr.To(imageInfo.Registry),
-						Tag:        ptr.To(imageInfo.Tag),
-						Repository: ptr.To(EnvoyWrapperImage),
-						PullPolicy: (*corev1.PullPolicy)(ptr.To(imageInfo.PullPolicy)),
-					},
-					SecurityContext: &corev1.SecurityContext{
-						AllowPrivilegeEscalation: ptr.To(false),
-						ReadOnlyRootFilesystem:   ptr.To(true),
-						RunAsNonRoot:             ptr.To(true),
-						RunAsUser:                ptr.To[int64](10101),
-						Capabilities: &corev1.Capabilities{
-							Drop: []corev1.Capability{"ALL"},
-							Add:  []corev1.Capability{"NET_BIND_SERVICE"},
+							InitialDelaySeconds: 0,
+							PeriodSeconds:       1,
+							TimeoutSeconds:      2,
+							FailureThreshold:    60,
+							SuccessThreshold:    1,
 						},
 					},
-				},
-				Stats: &v1alpha1.StatsConfig{
-					Enabled:                 ptr.To(true),
-					RoutePrefixRewrite:      ptr.To("/stats/prometheus?usedonly"),
-					EnableStatsRoute:        ptr.To(true),
-					StatsRoutePrefixRewrite: ptr.To("/stats"),
-				},
-				SdsContainer: &v1alpha1.SdsContainer{
-					Image: &v1alpha1.Image{
-						Registry:   ptr.To(imageInfo.Registry),
-						Tag:        ptr.To(imageInfo.Tag),
-						Repository: ptr.To(SdsImage),
-						PullPolicy: (*corev1.PullPolicy)(ptr.To(imageInfo.PullPolicy)),
-					},
-					Bootstrap: &v1alpha1.SdsBootstrap{
-						LogLevel: ptr.To("info"),
-					},
-				},
-				Istio: &v1alpha1.IstioIntegration{
-					IstioProxyContainer: &v1alpha1.IstioContainer{
+					EnvoyContainer: &v1alpha1.EnvoyContainer{
+						Bootstrap: &v1alpha1.EnvoyBootstrap{
+							LogLevel: ptr.To("info"),
+						},
 						Image: &v1alpha1.Image{
-							Registry:   ptr.To("docker.io/istio"),
-							Repository: ptr.To("proxyv2"),
-							Tag:        ptr.To("1.22.0"),
+							Registry:   ptr.To(imageInfo.Registry),
+							Tag:        ptr.To(imageInfo.Tag),
+							Repository: ptr.To(EnvoyWrapperImage),
 							PullPolicy: (*corev1.PullPolicy)(ptr.To(imageInfo.PullPolicy)),
 						},
-						LogLevel:              ptr.To("warning"),
-						IstioDiscoveryAddress: ptr.To("istiod.istio-system.svc:15012"),
-						IstioMetaMeshId:       ptr.To("cluster.local"),
-						IstioMetaClusterId:    ptr.To("Kubernetes"),
+						SecurityContext: &corev1.SecurityContext{
+							AllowPrivilegeEscalation: ptr.To(false),
+							ReadOnlyRootFilesystem:   ptr.To(true),
+							RunAsNonRoot:             ptr.To(true),
+							RunAsUser:                ptr.To[int64](10101),
+							Capabilities: &corev1.Capabilities{
+								Drop: []corev1.Capability{"ALL"},
+								Add:  []corev1.Capability{"NET_BIND_SERVICE"},
+							},
+						},
 					},
-				},
-				AiExtension: &v1alpha1.AiExtension{
-					Enabled: ptr.To(false),
-					Image: &v1alpha1.Image{
-						Repository: ptr.To(KgatewayAIContainerName),
-						Registry:   ptr.To(imageInfo.Registry),
-						Tag:        ptr.To(imageInfo.Tag),
-						PullPolicy: (*corev1.PullPolicy)(ptr.To(imageInfo.PullPolicy)),
+					Stats: &v1alpha1.StatsConfig{
+						Enabled:                 ptr.To(true),
+						RoutePrefixRewrite:      ptr.To("/stats/prometheus?usedonly"),
+						EnableStatsRoute:        ptr.To(true),
+						StatsRoutePrefixRewrite: ptr.To("/stats"),
 					},
-				},
-				Agentgateway: &v1alpha1.Agentgateway{
-					Enabled:  ptr.To(false),
-					LogLevel: ptr.To("info"),
-					Image: &v1alpha1.Image{
-						Registry:   ptr.To(AgentgatewayRegistry),
-						Tag:        ptr.To(AgentgatewayDefaultTag),
-						Repository: ptr.To(AgentgatewayImage),
-						PullPolicy: (*corev1.PullPolicy)(ptr.To(imageInfo.PullPolicy)),
+					SdsContainer: &v1alpha1.SdsContainer{
+						Image: &v1alpha1.Image{
+							Registry:   ptr.To(imageInfo.Registry),
+							Tag:        ptr.To(imageInfo.Tag),
+							Repository: ptr.To(SdsImage),
+							PullPolicy: (*corev1.PullPolicy)(ptr.To(imageInfo.PullPolicy)),
+						},
+						Bootstrap: &v1alpha1.SdsBootstrap{
+							LogLevel: ptr.To("info"),
+						},
 					},
-					SecurityContext: &corev1.SecurityContext{
-						AllowPrivilegeEscalation: ptr.To(false),
-						ReadOnlyRootFilesystem:   ptr.To(true),
-						RunAsNonRoot:             ptr.To(true),
-						RunAsUser:                ptr.To[int64](10101),
-						Capabilities: &corev1.Capabilities{
-							Drop: []corev1.Capability{"ALL"},
-							Add:  []corev1.Capability{"NET_BIND_SERVICE"},
+					Istio: &v1alpha1.IstioIntegration{
+						IstioProxyContainer: &v1alpha1.IstioContainer{
+							Image: &v1alpha1.Image{
+								Registry:   ptr.To("docker.io/istio"),
+								Repository: ptr.To("proxyv2"),
+								Tag:        ptr.To("1.22.0"),
+								PullPolicy: (*corev1.PullPolicy)(ptr.To(imageInfo.PullPolicy)),
+							},
+							LogLevel:              ptr.To("warning"),
+							IstioDiscoveryAddress: ptr.To("istiod.istio-system.svc:15012"),
+							IstioMetaMeshId:       ptr.To("cluster.local"),
+							IstioMetaClusterId:    ptr.To("Kubernetes"),
+						},
+					},
+					AiExtension: &v1alpha1.AiExtension{
+						Enabled: ptr.To(false),
+						Image: &v1alpha1.Image{
+							Repository: ptr.To(KgatewayAIContainerName),
+							Registry:   ptr.To(imageInfo.Registry),
+							Tag:        ptr.To(imageInfo.Tag),
+							PullPolicy: (*corev1.PullPolicy)(ptr.To(imageInfo.PullPolicy)),
+						},
+					},
+					Agentgateway: &v1alpha1.Agentgateway{
+						Enabled:  ptr.To(false),
+						LogLevel: ptr.To("info"),
+						Image: &v1alpha1.Image{
+							Registry:   ptr.To(AgentgatewayRegistry),
+							Tag:        ptr.To(AgentgatewayDefaultTag),
+							Repository: ptr.To(AgentgatewayImage),
+							PullPolicy: (*corev1.PullPolicy)(ptr.To(imageInfo.PullPolicy)),
+						},
+						SecurityContext: &corev1.SecurityContext{
+							AllowPrivilegeEscalation: ptr.To(false),
+							ReadOnlyRootFilesystem:   ptr.To(true),
+							RunAsNonRoot:             ptr.To(true),
+							RunAsUser:                ptr.To[int64](10101),
+							Capabilities: &corev1.Capabilities{
+								Drop: []corev1.Capability{"ALL"},
+								Add:  []corev1.Capability{"NET_BIND_SERVICE"},
+							},
 						},
 					},
 				},

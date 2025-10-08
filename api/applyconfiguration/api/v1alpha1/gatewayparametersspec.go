@@ -9,8 +9,8 @@ import (
 // GatewayParametersSpecApplyConfiguration represents a declarative configuration of the GatewayParametersSpec type for use
 // with apply.
 type GatewayParametersSpecApplyConfiguration struct {
-	Kube        *KubernetesProxyConfigApplyConfiguration `json:"kube,omitempty"`
-	SelfManaged *apiv1alpha1.SelfManagedGateway          `json:"selfManaged,omitempty"`
+	Kube        *KubernetesProxyFullConfigApplyConfiguration `json:"kube,omitempty"`
+	SelfManaged *apiv1alpha1.SelfManagedGateway              `json:"selfManaged,omitempty"`
 }
 
 // GatewayParametersSpecApplyConfiguration constructs a declarative configuration of the GatewayParametersSpec type for use with
@@ -22,7 +22,7 @@ func GatewayParametersSpec() *GatewayParametersSpecApplyConfiguration {
 // WithKube sets the Kube field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Kube field is set to the value of the last call.
-func (b *GatewayParametersSpecApplyConfiguration) WithKube(value *KubernetesProxyConfigApplyConfiguration) *GatewayParametersSpecApplyConfiguration {
+func (b *GatewayParametersSpecApplyConfiguration) WithKube(value *KubernetesProxyFullConfigApplyConfiguration) *GatewayParametersSpecApplyConfiguration {
 	b.Kube = value
 	return b
 }

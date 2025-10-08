@@ -1161,7 +1161,7 @@ var schemaYAML = typed.YAMLObject(`types:
     fields:
     - name: kube
       type:
-        namedType: com.github.kgateway-dev.kgateway.v2.api.v1alpha1.KubernetesProxyConfig
+        namedType: com.github.kgateway-dev.kgateway.v2.api.v1alpha1.KubernetesProxyFullConfig
     - name: selfManaged
       type:
         namedType: com.github.kgateway-dev.kgateway.v2.api.v1alpha1.SelfManagedGateway
@@ -1500,7 +1500,7 @@ var schemaYAML = typed.YAMLObject(`types:
           elementType:
             namedType: com.github.kgateway-dev.kgateway.v2.api.v1alpha1.KeyAnyValue
           elementRelationship: atomic
-- name: com.github.kgateway-dev.kgateway.v2.api.v1alpha1.KubernetesProxyConfig
+- name: com.github.kgateway-dev.kgateway.v2.api.v1alpha1.KubernetesProxyFullConfig
   map:
     fields:
     - name: agentgateway

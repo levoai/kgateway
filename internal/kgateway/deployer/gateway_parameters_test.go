@@ -273,54 +273,56 @@ func TestAgentgatewayAndEnvoyContainerDistinctValues(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: gw2_v1alpha1.GatewayParametersSpec{
-			Kube: &gw2_v1alpha1.KubernetesProxyConfig{
-				Agentgateway: &gw2_v1alpha1.Agentgateway{
-					Enabled: ptr.To(false), // Explicitly disabled
-					Image: &gw2_v1alpha1.Image{
-						Registry:   ptr.To("agent-registry"),
-						Repository: ptr.To("agent-repo"),
-						Tag:        ptr.To("agent-tag"),
-					},
-					Resources: &corev1.ResourceRequirements{
-						Requests: corev1.ResourceList{
-							corev1.ResourceCPU:    resource.MustParse("500m"),
-							corev1.ResourceMemory: resource.MustParse("512Mi"),
+			Kube: &gw2_v1alpha1.KubernetesProxyFullConfig{
+				KubernetesProxyConfig: &gw2_v1alpha1.KubernetesProxyConfig{
+					Agentgateway: &gw2_v1alpha1.Agentgateway{
+						Enabled: ptr.To(false), // Explicitly disabled
+						Image: &gw2_v1alpha1.Image{
+							Registry:   ptr.To("agent-registry"),
+							Repository: ptr.To("agent-repo"),
+							Tag:        ptr.To("agent-tag"),
+						},
+						Resources: &corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{
+								corev1.ResourceCPU:    resource.MustParse("500m"),
+								corev1.ResourceMemory: resource.MustParse("512Mi"),
+							},
+						},
+						SecurityContext: &corev1.SecurityContext{
+							RunAsUser: ptr.To(int64(12345)),
+						},
+						Env: []corev1.EnvVar{
+							{
+								Name:  "AGENT_ENV",
+								Value: "agent-value",
+							},
 						},
 					},
-					SecurityContext: &corev1.SecurityContext{
-						RunAsUser: ptr.To(int64(12345)),
-					},
-					Env: []corev1.EnvVar{
-						{
-							Name:  "AGENT_ENV",
-							Value: "agent-value",
+					EnvoyContainer: &gw2_v1alpha1.EnvoyContainer{
+						Image: &gw2_v1alpha1.Image{
+							Registry:   ptr.To("envoy-registry"),
+							Repository: ptr.To("envoy-repo"),
+							Tag:        ptr.To("envoy-tag"),
+							PullPolicy: ptr.To(corev1.PullNever),
 						},
-					},
-				},
-				EnvoyContainer: &gw2_v1alpha1.EnvoyContainer{
-					Image: &gw2_v1alpha1.Image{
-						Registry:   ptr.To("envoy-registry"),
-						Repository: ptr.To("envoy-repo"),
-						Tag:        ptr.To("envoy-tag"),
-						PullPolicy: ptr.To(corev1.PullNever),
-					},
-					Resources: &corev1.ResourceRequirements{
-						Requests: corev1.ResourceList{
-							corev1.ResourceCPU:    resource.MustParse("100m"),
-							corev1.ResourceMemory: resource.MustParse("128Mi"),
+						Resources: &corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{
+								corev1.ResourceCPU:    resource.MustParse("100m"),
+								corev1.ResourceMemory: resource.MustParse("128Mi"),
+							},
 						},
-					},
-					SecurityContext: &corev1.SecurityContext{
-						RunAsUser: ptr.To(int64(54321)),
-					},
-					Env: []corev1.EnvVar{
-						{
-							Name:  "ENVOY_ENV",
-							Value: "envoy-value",
+						SecurityContext: &corev1.SecurityContext{
+							RunAsUser: ptr.To(int64(54321)),
 						},
-					},
-					Bootstrap: &gw2_v1alpha1.EnvoyBootstrap{
-						LogLevel: ptr.To("info"),
+						Env: []corev1.EnvVar{
+							{
+								Name:  "ENVOY_ENV",
+								Value: "envoy-value",
+							},
+						},
+						Bootstrap: &gw2_v1alpha1.EnvoyBootstrap{
+							LogLevel: ptr.To("info"),
+						},
 					},
 				},
 			},

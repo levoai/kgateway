@@ -208,58 +208,60 @@ var _ = Describe("Deployer", func() {
 					UID:       "1237",
 				},
 				Spec: gw2_v1alpha1.GatewayParametersSpec{
-					Kube: &gw2_v1alpha1.KubernetesProxyConfig{
-						Deployment: &gw2_v1alpha1.ProxyDeployment{
-							Replicas: ptr.To[int32](2),
-						},
-						EnvoyContainer: &gw2_v1alpha1.EnvoyContainer{
-							Bootstrap: &gw2_v1alpha1.EnvoyBootstrap{
-								LogLevel: ptr.To("debug"),
-								ComponentLogLevels: map[string]string{
-									"router":   "info",
-									"listener": "warn",
+					Kube: &gw2_v1alpha1.KubernetesProxyFullConfig{
+						KubernetesProxyConfig: &gw2_v1alpha1.KubernetesProxyConfig{
+							Deployment: &gw2_v1alpha1.ProxyDeployment{
+								Replicas: ptr.To[int32](2),
+							},
+							EnvoyContainer: &gw2_v1alpha1.EnvoyContainer{
+								Bootstrap: &gw2_v1alpha1.EnvoyBootstrap{
+									LogLevel: ptr.To("debug"),
+									ComponentLogLevels: map[string]string{
+										"router":   "info",
+										"listener": "warn",
+									},
+								},
+								Image: &gw2_v1alpha1.Image{
+									Registry:   ptr.To("scooby"),
+									Repository: ptr.To("dooby"),
+									Tag:        ptr.To("doo"),
+									PullPolicy: ptr.To(corev1.PullAlways),
 								},
 							},
-							Image: &gw2_v1alpha1.Image{
-								Registry:   ptr.To("scooby"),
-								Repository: ptr.To("dooby"),
-								Tag:        ptr.To("doo"),
-								PullPolicy: ptr.To(corev1.PullAlways),
+							PodTemplate: &gw2_v1alpha1.Pod{
+								ExtraAnnotations: map[string]string{
+									"foo": "bar",
+								},
+								SecurityContext: &corev1.PodSecurityContext{
+									RunAsUser:  ptr.To(int64(1)),
+									RunAsGroup: ptr.To(int64(2)),
+								},
 							},
-						},
-						PodTemplate: &gw2_v1alpha1.Pod{
-							ExtraAnnotations: map[string]string{
-								"foo": "bar",
+							Service: &gw2_v1alpha1.Service{
+								Type:      ptr.To(corev1.ServiceTypeClusterIP),
+								ClusterIP: ptr.To("99.99.99.99"),
+								ExtraLabels: map[string]string{
+									"foo-label": "bar-label",
+								},
+								ExtraAnnotations: map[string]string{
+									"foo": "bar",
+								},
+								ExternalTrafficPolicy: ptr.To(string(corev1.ServiceExternalTrafficPolicyTypeLocal)),
 							},
-							SecurityContext: &corev1.PodSecurityContext{
-								RunAsUser:  ptr.To(int64(1)),
-								RunAsGroup: ptr.To(int64(2)),
+							ServiceAccount: &gw2_v1alpha1.ServiceAccount{
+								ExtraLabels: map[string]string{
+									"default-label-key": "default-label-val",
+								},
+								ExtraAnnotations: map[string]string{
+									"default-anno-key": "default-anno-val",
+								},
 							},
-						},
-						Service: &gw2_v1alpha1.Service{
-							Type:      ptr.To(corev1.ServiceTypeClusterIP),
-							ClusterIP: ptr.To("99.99.99.99"),
-							ExtraLabels: map[string]string{
-								"foo-label": "bar-label",
+							Stats: &gw2_v1alpha1.StatsConfig{
+								Enabled:                 ptr.To(true),
+								RoutePrefixRewrite:      ptr.To("/stats/prometheus?usedonly"),
+								EnableStatsRoute:        ptr.To(true),
+								StatsRoutePrefixRewrite: ptr.To("/stats"),
 							},
-							ExtraAnnotations: map[string]string{
-								"foo": "bar",
-							},
-							ExternalTrafficPolicy: ptr.To(string(corev1.ServiceExternalTrafficPolicyTypeLocal)),
-						},
-						ServiceAccount: &gw2_v1alpha1.ServiceAccount{
-							ExtraLabels: map[string]string{
-								"default-label-key": "default-label-val",
-							},
-							ExtraAnnotations: map[string]string{
-								"default-anno-key": "default-anno-val",
-							},
-						},
-						Stats: &gw2_v1alpha1.StatsConfig{
-							Enabled:                 ptr.To(true),
-							RoutePrefixRewrite:      ptr.To("/stats/prometheus?usedonly"),
-							EnableStatsRoute:        ptr.To(true),
-							StatsRoutePrefixRewrite: ptr.To("/stats"),
 						},
 					},
 				},
@@ -302,11 +304,13 @@ var _ = Describe("Deployer", func() {
 					UID:       "1237",
 				},
 				Spec: gw2_v1alpha1.GatewayParametersSpec{
-					Kube: &gw2_v1alpha1.KubernetesProxyConfig{
-						OmitDefaultSecurityContext: ptr.To(true),
-						EnvoyContainer: &gw2_v1alpha1.EnvoyContainer{
-							SecurityContext: &corev1.SecurityContext{
-								RunAsUser: ptr.To(int64(333)),
+					Kube: &gw2_v1alpha1.KubernetesProxyFullConfig{
+						KubernetesProxyConfig: &gw2_v1alpha1.KubernetesProxyConfig{
+							OmitDefaultSecurityContext: ptr.To(true),
+							EnvoyContainer: &gw2_v1alpha1.EnvoyContainer{
+								SecurityContext: &corev1.SecurityContext{
+									RunAsUser: ptr.To(int64(333)),
+								},
 							},
 						},
 					},
@@ -327,63 +331,65 @@ var _ = Describe("Deployer", func() {
 					UID:       "1237",
 				},
 				Spec: gw2_v1alpha1.GatewayParametersSpec{
-					Kube: &gw2_v1alpha1.KubernetesProxyConfig{
-						Agentgateway: &gw2_v1alpha1.Agentgateway{
-							Enabled: ptr.To(true),
-							Image: &gw2_v1alpha1.Image{
-								Tag: ptr.To("0.4.0"),
-							},
-							SecurityContext: &corev1.SecurityContext{
-								RunAsUser: ptr.To(int64(333)),
-							},
-							Resources: &corev1.ResourceRequirements{
-								Limits: corev1.ResourceList{"cpu": resource.MustParse("101m")},
-							},
-							Env: []corev1.EnvVar{
-								{
-									Name:  "test",
-									Value: "value",
+					Kube: &gw2_v1alpha1.KubernetesProxyFullConfig{
+						KubernetesProxyConfig: &gw2_v1alpha1.KubernetesProxyConfig{
+							Agentgateway: &gw2_v1alpha1.Agentgateway{
+								Enabled: ptr.To(true),
+								Image: &gw2_v1alpha1.Image{
+									Tag: ptr.To("0.4.0"),
 								},
-							},
-						},
-						PodTemplate: &gw2_v1alpha1.Pod{
-							TopologySpreadConstraints: []corev1.TopologySpreadConstraint{
-								{
-									MaxSkew:           1,
-									TopologyKey:       "kubernetes.io/hostname",
-									WhenUnsatisfiable: corev1.DoNotSchedule,
-									LabelSelector: &metav1.LabelSelector{
-										MatchLabels: map[string]string{"app": "test"},
+								SecurityContext: &corev1.SecurityContext{
+									RunAsUser: ptr.To(int64(333)),
+								},
+								Resources: &corev1.ResourceRequirements{
+									Limits: corev1.ResourceList{"cpu": resource.MustParse("101m")},
+								},
+								Env: []corev1.EnvVar{
+									{
+										Name:  "test",
+										Value: "value",
 									},
 								},
 							},
-							Tolerations: []corev1.Toleration{
-								{
-									Key:      "test-key",
-									Operator: corev1.TolerationOpEqual,
-									Value:    "test-value",
-									Effect:   corev1.TaintEffectNoSchedule,
+							PodTemplate: &gw2_v1alpha1.Pod{
+								TopologySpreadConstraints: []corev1.TopologySpreadConstraint{
+									{
+										MaxSkew:           1,
+										TopologyKey:       "kubernetes.io/hostname",
+										WhenUnsatisfiable: corev1.DoNotSchedule,
+										LabelSelector: &metav1.LabelSelector{
+											MatchLabels: map[string]string{"app": "test"},
+										},
+									},
 								},
-							},
-							Affinity: &corev1.Affinity{
-								NodeAffinity: &corev1.NodeAffinity{
-									RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
-										NodeSelectorTerms: []corev1.NodeSelectorTerm{
-											{
-												MatchExpressions: []corev1.NodeSelectorRequirement{
-													{
-														Key:      "kubernetes.io/os",
-														Operator: corev1.NodeSelectorOpIn,
-														Values:   []string{"linux"},
+								Tolerations: []corev1.Toleration{
+									{
+										Key:      "test-key",
+										Operator: corev1.TolerationOpEqual,
+										Value:    "test-value",
+										Effect:   corev1.TaintEffectNoSchedule,
+									},
+								},
+								Affinity: &corev1.Affinity{
+									NodeAffinity: &corev1.NodeAffinity{
+										RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+											NodeSelectorTerms: []corev1.NodeSelectorTerm{
+												{
+													MatchExpressions: []corev1.NodeSelectorRequirement{
+														{
+															Key:      "kubernetes.io/os",
+															Operator: corev1.NodeSelectorOpIn,
+															Values:   []string{"linux"},
+														},
 													},
 												},
 											},
 										},
 									},
 								},
-							},
-							NodeSelector: map[string]string{
-								"kubernetes.io/arch": "amd64",
+								NodeSelector: map[string]string{
+									"kubernetes.io/arch": "amd64",
+								},
 							},
 						},
 					},
@@ -1396,11 +1402,13 @@ var _ = Describe("Deployer", func() {
 						UID:       "1237",
 					},
 					Spec: gw2_v1alpha1.GatewayParametersSpec{
-						Kube: &gw2_v1alpha1.KubernetesProxyConfig{
-							EnvoyContainer: &gw2_v1alpha1.EnvoyContainer{
-								Image: &gw2_v1alpha1.Image{
-									Registry: ptr.To("bar"),
-									Tag:      ptr.To("2.3.4"),
+						Kube: &gw2_v1alpha1.KubernetesProxyFullConfig{
+							KubernetesProxyConfig: &gw2_v1alpha1.KubernetesProxyConfig{
+								EnvoyContainer: &gw2_v1alpha1.EnvoyContainer{
+									Image: &gw2_v1alpha1.Image{
+										Registry: ptr.To("bar"),
+										Tag:      ptr.To("2.3.4"),
+									},
 								},
 							},
 						},
@@ -1495,14 +1503,16 @@ var _ = Describe("Deployer", func() {
 						Namespace: defaultNamespace,
 					},
 					Spec: gw2_v1alpha1.GatewayParametersSpec{
-						Kube: &gw2_v1alpha1.KubernetesProxyConfig{
-							// Only override a few values, rest should be defaulted
-							Service: &gw2_v1alpha1.Service{
-								Type: ptr.To(corev1.ServiceTypeClusterIP),
-							},
-							EnvoyContainer: &gw2_v1alpha1.EnvoyContainer{
-								Bootstrap: &gw2_v1alpha1.EnvoyBootstrap{
-									LogLevel: ptr.To("debug"),
+						Kube: &gw2_v1alpha1.KubernetesProxyFullConfig{
+							KubernetesProxyConfig: &gw2_v1alpha1.KubernetesProxyConfig{
+								// Only override a few values, rest should be defaulted
+								Service: &gw2_v1alpha1.Service{
+									Type: ptr.To(corev1.ServiceTypeClusterIP),
+								},
+								EnvoyContainer: &gw2_v1alpha1.EnvoyContainer{
+									Bootstrap: &gw2_v1alpha1.EnvoyBootstrap{
+										LogLevel: ptr.To("debug"),
+									},
 								},
 							},
 						},
@@ -1638,51 +1648,53 @@ var _ = Describe("Deployer", func() {
 						UID:       "1236",
 					},
 					Spec: gw2_v1alpha1.GatewayParametersSpec{
-						Kube: &gw2_v1alpha1.KubernetesProxyConfig{
-							Deployment: &gw2_v1alpha1.ProxyDeployment{
-								Replicas: ptr.To[int32](3),
-							},
-							EnvoyContainer: &gw2_v1alpha1.EnvoyContainer{
-								Bootstrap: &gw2_v1alpha1.EnvoyBootstrap{
-									LogLevel: ptr.To("debug"),
-									ComponentLogLevels: map[string]string{
-										"router":   "info",
-										"listener": "warn",
+						Kube: &gw2_v1alpha1.KubernetesProxyFullConfig{
+							KubernetesProxyConfig: &gw2_v1alpha1.KubernetesProxyConfig{
+								Deployment: &gw2_v1alpha1.ProxyDeployment{
+									Replicas: ptr.To[int32](3),
+								},
+								EnvoyContainer: &gw2_v1alpha1.EnvoyContainer{
+									Bootstrap: &gw2_v1alpha1.EnvoyBootstrap{
+										LogLevel: ptr.To("debug"),
+										ComponentLogLevels: map[string]string{
+											"router":   "info",
+											"listener": "warn",
+										},
+									},
+									Image: &gw2_v1alpha1.Image{
+										Registry:   ptr.To("foo"),
+										Repository: ptr.To("bar"),
+										Tag:        ptr.To("quux"),
+										PullPolicy: ptr.To(corev1.PullAlways),
 									},
 								},
-								Image: &gw2_v1alpha1.Image{
-									Registry:   ptr.To("foo"),
-									Repository: ptr.To("bar"),
-									Tag:        ptr.To("quux"),
-									PullPolicy: ptr.To(corev1.PullAlways),
+								PodTemplate: &gw2_v1alpha1.Pod{
+									ExtraAnnotations: map[string]string{
+										"override-foo": "override-bar",
+									},
+									SecurityContext: &corev1.PodSecurityContext{
+										RunAsUser:  ptr.To(int64(3)),
+										RunAsGroup: ptr.To(int64(4)),
+									},
 								},
-							},
-							PodTemplate: &gw2_v1alpha1.Pod{
-								ExtraAnnotations: map[string]string{
-									"override-foo": "override-bar",
+								Service: &gw2_v1alpha1.Service{
+									Type:      ptr.To(corev1.ServiceTypeClusterIP),
+									ClusterIP: ptr.To("99.99.99.99"),
+									ExtraLabels: map[string]string{
+										"override-foo-label": "override-bar-label",
+									},
+									ExtraAnnotations: map[string]string{
+										"override-foo": "override-bar",
+									},
+									ExternalTrafficPolicy: ptr.To(string(corev1.ServiceExternalTrafficPolicyTypeLocal)),
 								},
-								SecurityContext: &corev1.PodSecurityContext{
-									RunAsUser:  ptr.To(int64(3)),
-									RunAsGroup: ptr.To(int64(4)),
-								},
-							},
-							Service: &gw2_v1alpha1.Service{
-								Type:      ptr.To(corev1.ServiceTypeClusterIP),
-								ClusterIP: ptr.To("99.99.99.99"),
-								ExtraLabels: map[string]string{
-									"override-foo-label": "override-bar-label",
-								},
-								ExtraAnnotations: map[string]string{
-									"override-foo": "override-bar",
-								},
-								ExternalTrafficPolicy: ptr.To(string(corev1.ServiceExternalTrafficPolicyTypeLocal)),
-							},
-							ServiceAccount: &gw2_v1alpha1.ServiceAccount{
-								ExtraLabels: map[string]string{
-									"override-label-key": "override-label-val",
-								},
-								ExtraAnnotations: map[string]string{
-									"override-anno-key": "override-anno-val",
+								ServiceAccount: &gw2_v1alpha1.ServiceAccount{
+									ExtraLabels: map[string]string{
+										"override-label-key": "override-label-val",
+									},
+									ExtraAnnotations: map[string]string{
+										"override-anno-key": "override-anno-val",
+									},
 								},
 							},
 						},
@@ -1704,56 +1716,58 @@ var _ = Describe("Deployer", func() {
 						UID:       "1236",
 					},
 					Spec: gw2_v1alpha1.GatewayParametersSpec{
-						Kube: &gw2_v1alpha1.KubernetesProxyConfig{
-							Deployment: &gw2_v1alpha1.ProxyDeployment{
-								Replicas: ptr.To[int32](3),
-							},
-							EnvoyContainer: &gw2_v1alpha1.EnvoyContainer{
-								Bootstrap: &gw2_v1alpha1.EnvoyBootstrap{
-									LogLevel: ptr.To("debug"),
-									ComponentLogLevels: map[string]string{
-										"router":   "info",
-										"listener": "warn",
+						Kube: &gw2_v1alpha1.KubernetesProxyFullConfig{
+							KubernetesProxyConfig: &gw2_v1alpha1.KubernetesProxyConfig{
+								Deployment: &gw2_v1alpha1.ProxyDeployment{
+									Replicas: ptr.To[int32](3),
+								},
+								EnvoyContainer: &gw2_v1alpha1.EnvoyContainer{
+									Bootstrap: &gw2_v1alpha1.EnvoyBootstrap{
+										LogLevel: ptr.To("debug"),
+										ComponentLogLevels: map[string]string{
+											"router":   "info",
+											"listener": "warn",
+										},
+									},
+									Image: &gw2_v1alpha1.Image{
+										Registry:   ptr.To("foo"),
+										Repository: ptr.To("bar"),
+										Tag:        ptr.To("quux"),
+										PullPolicy: ptr.To(corev1.PullAlways),
 									},
 								},
-								Image: &gw2_v1alpha1.Image{
-									Registry:   ptr.To("foo"),
-									Repository: ptr.To("bar"),
-									Tag:        ptr.To("quux"),
-									PullPolicy: ptr.To(corev1.PullAlways),
+								PodTemplate: &gw2_v1alpha1.Pod{
+									ExtraAnnotations: map[string]string{
+										"foo":          "bar",
+										"override-foo": "override-bar",
+									},
+									SecurityContext: &corev1.PodSecurityContext{
+										RunAsUser:  ptr.To(int64(3)),
+										RunAsGroup: ptr.To(int64(4)),
+									},
 								},
-							},
-							PodTemplate: &gw2_v1alpha1.Pod{
-								ExtraAnnotations: map[string]string{
-									"foo":          "bar",
-									"override-foo": "override-bar",
+								Service: &gw2_v1alpha1.Service{
+									Type:      ptr.To(corev1.ServiceTypeClusterIP),
+									ClusterIP: ptr.To("99.99.99.99"),
+									ExtraLabels: map[string]string{
+										"foo-label":          "bar-label",
+										"override-foo-label": "override-bar-label",
+									},
+									ExtraAnnotations: map[string]string{
+										"foo":          "bar",
+										"override-foo": "override-bar",
+									},
+									ExternalTrafficPolicy: ptr.To(string(corev1.ServiceExternalTrafficPolicyTypeLocal)),
 								},
-								SecurityContext: &corev1.PodSecurityContext{
-									RunAsUser:  ptr.To(int64(3)),
-									RunAsGroup: ptr.To(int64(4)),
-								},
-							},
-							Service: &gw2_v1alpha1.Service{
-								Type:      ptr.To(corev1.ServiceTypeClusterIP),
-								ClusterIP: ptr.To("99.99.99.99"),
-								ExtraLabels: map[string]string{
-									"foo-label":          "bar-label",
-									"override-foo-label": "override-bar-label",
-								},
-								ExtraAnnotations: map[string]string{
-									"foo":          "bar",
-									"override-foo": "override-bar",
-								},
-								ExternalTrafficPolicy: ptr.To(string(corev1.ServiceExternalTrafficPolicyTypeLocal)),
-							},
-							ServiceAccount: &gw2_v1alpha1.ServiceAccount{
-								ExtraLabels: map[string]string{
-									"default-label-key":  "default-label-val",
-									"override-label-key": "override-label-val",
-								},
-								ExtraAnnotations: map[string]string{
-									"default-anno-key":  "default-anno-val",
-									"override-anno-key": "override-anno-val",
+								ServiceAccount: &gw2_v1alpha1.ServiceAccount{
+									ExtraLabels: map[string]string{
+										"default-label-key":  "default-label-val",
+										"override-label-key": "override-label-val",
+									},
+									ExtraAnnotations: map[string]string{
+										"default-anno-key":  "default-anno-val",
+										"override-anno-key": "override-anno-val",
+									},
 								},
 							},
 						},
@@ -1785,45 +1799,47 @@ var _ = Describe("Deployer", func() {
 						UID:       "1236",
 					},
 					Spec: gw2_v1alpha1.GatewayParametersSpec{
-						Kube: &gw2_v1alpha1.KubernetesProxyConfig{
-							SdsContainer: &gw2_v1alpha1.SdsContainer{
-								Image: &gw2_v1alpha1.Image{
-									Registry:   ptr.To("foo"),
-									Repository: ptr.To("bar"),
-									Tag:        ptr.To("baz"),
-								},
-							},
-							Istio: &gw2_v1alpha1.IstioIntegration{
-								IstioProxyContainer: &gw2_v1alpha1.IstioContainer{
+						Kube: &gw2_v1alpha1.KubernetesProxyFullConfig{
+							KubernetesProxyConfig: &gw2_v1alpha1.KubernetesProxyConfig{
+								SdsContainer: &gw2_v1alpha1.SdsContainer{
 									Image: &gw2_v1alpha1.Image{
-										Registry:   ptr.To("scooby"),
-										Repository: ptr.To("dooby"),
-										Tag:        ptr.To("doo"),
+										Registry:   ptr.To("foo"),
+										Repository: ptr.To("bar"),
+										Tag:        ptr.To("baz"),
 									},
-									IstioDiscoveryAddress: ptr.To("can't"),
-									IstioMetaMeshId:       ptr.To("be"),
-									IstioMetaClusterId:    ptr.To("overridden"),
 								},
-							},
-							AiExtension: &gw2_v1alpha1.AiExtension{
-								Enabled: ptr.To(true),
-								Image: &gw2_v1alpha1.Image{
-									Registry:   ptr.To("foo"),
-									Repository: ptr.To("bar"),
-									Tag:        ptr.To("baz"),
-								},
-								Ports: []corev1.ContainerPort{{
-									Name:          "foo",
-									ContainerPort: 80,
-								}},
-								Tracing: &gw2_v1alpha1.AiExtensionTrace{
-									EndPoint: "http://my-otel-collector.svc.cluster.local:4317",
-									Sampler: &gw2_v1alpha1.OTelTracesSampler{
-										SamplerType: ptr.To(gw2_v1alpha1.OTelTracesSamplerTraceidratio),
-										SamplerArg:  ptr.To("0.5"),
+								Istio: &gw2_v1alpha1.IstioIntegration{
+									IstioProxyContainer: &gw2_v1alpha1.IstioContainer{
+										Image: &gw2_v1alpha1.Image{
+											Registry:   ptr.To("scooby"),
+											Repository: ptr.To("dooby"),
+											Tag:        ptr.To("doo"),
+										},
+										IstioDiscoveryAddress: ptr.To("can't"),
+										IstioMetaMeshId:       ptr.To("be"),
+										IstioMetaClusterId:    ptr.To("overridden"),
 									},
-									Timeout:  &metav1.Duration{Duration: 100 * time.Second},
-									Protocol: ptr.To(gw2_v1alpha1.OTLPTracesProtocolTypeGrpc),
+								},
+								AiExtension: &gw2_v1alpha1.AiExtension{
+									Enabled: ptr.To(true),
+									Image: &gw2_v1alpha1.Image{
+										Registry:   ptr.To("foo"),
+										Repository: ptr.To("bar"),
+										Tag:        ptr.To("baz"),
+									},
+									Ports: []corev1.ContainerPort{{
+										Name:          "foo",
+										ContainerPort: 80,
+									}},
+									Tracing: &gw2_v1alpha1.AiExtensionTrace{
+										EndPoint: "http://my-otel-collector.svc.cluster.local:4317",
+										Sampler: &gw2_v1alpha1.OTelTracesSampler{
+											SamplerType: ptr.To(gw2_v1alpha1.OTelTracesSamplerTraceidratio),
+											SamplerArg:  ptr.To("0.5"),
+										},
+										Timeout:  &metav1.Duration{Duration: 100 * time.Second},
+										Protocol: ptr.To(gw2_v1alpha1.OTLPTracesProtocolTypeGrpc),
+									},
 								},
 							},
 						},
@@ -1850,10 +1866,12 @@ var _ = Describe("Deployer", func() {
 						UID:       "1236",
 					},
 					Spec: gw2_v1alpha1.GatewayParametersSpec{
-						Kube: &gw2_v1alpha1.KubernetesProxyConfig{
-							Stats: &gw2_v1alpha1.StatsConfig{
-								Enabled:          ptr.To(false),
-								EnableStatsRoute: ptr.To(false),
+						Kube: &gw2_v1alpha1.KubernetesProxyFullConfig{
+							KubernetesProxyConfig: &gw2_v1alpha1.KubernetesProxyConfig{
+								Stats: &gw2_v1alpha1.StatsConfig{
+									Enabled:          ptr.To(false),
+									EnableStatsRoute: ptr.To(false),
+								},
 							},
 						},
 					},
@@ -2548,13 +2566,15 @@ var _ = Describe("Deployer", func() {
 						Namespace: defaultNamespace,
 					},
 					Spec: gw2_v1alpha1.GatewayParametersSpec{
-						Kube: &gw2_v1alpha1.KubernetesProxyConfig{
-							Service: &gw2_v1alpha1.Service{
-								Type: ptr.To(corev1.ServiceTypeNodePort),
-								Ports: []gw2_v1alpha1.Port{
-									{
-										Port:     80,
-										NodePort: ptr.To[int32](30000),
+						Kube: &gw2_v1alpha1.KubernetesProxyFullConfig{
+							KubernetesProxyConfig: &gw2_v1alpha1.KubernetesProxyConfig{
+								Service: &gw2_v1alpha1.Service{
+									Type: ptr.To(corev1.ServiceTypeNodePort),
+									Ports: []gw2_v1alpha1.Port{
+										{
+											Port:     80,
+											NodePort: ptr.To[int32](30000),
+										},
 									},
 								},
 							},
@@ -2756,9 +2776,9 @@ var _ = Describe("Deployer", func() {
 						UID:       "1237",
 					},
 					Spec: gw2_v1alpha1.GatewayParametersSpec{
-						Kube: &gw2_v1alpha1.KubernetesProxyConfig{
-							Deployment: &gw2_v1alpha1.ProxyDeployment{
-								OmitReplicas: ptr.To(true),
+						Kube: &gw2_v1alpha1.KubernetesProxyFullConfig{
+							KubernetesProxyConfig: &gw2_v1alpha1.KubernetesProxyConfig{
+								Deployment: &gw2_v1alpha1.ProxyDeployment{},
 							},
 						},
 					},
@@ -2786,9 +2806,11 @@ var _ = Describe("Deployer", func() {
 						UID:       "1237",
 					},
 					Spec: gw2_v1alpha1.GatewayParametersSpec{
-						Kube: &gw2_v1alpha1.KubernetesProxyConfig{
-							Deployment: &gw2_v1alpha1.ProxyDeployment{
-								Replicas: ptr.To[int32](3),
+						Kube: &gw2_v1alpha1.KubernetesProxyFullConfig{
+							KubernetesProxyConfig: &gw2_v1alpha1.KubernetesProxyConfig{
+								Deployment: &gw2_v1alpha1.ProxyDeployment{
+									Replicas: ptr.To[int32](3),
+								},
 							},
 						},
 					},
@@ -2816,8 +2838,10 @@ var _ = Describe("Deployer", func() {
 						UID:       "1237",
 					},
 					Spec: gw2_v1alpha1.GatewayParametersSpec{
-						Kube: &gw2_v1alpha1.KubernetesProxyConfig{
-							Deployment: &gw2_v1alpha1.ProxyDeployment{},
+						Kube: &gw2_v1alpha1.KubernetesProxyFullConfig{
+							KubernetesProxyConfig: &gw2_v1alpha1.KubernetesProxyConfig{
+								Deployment: &gw2_v1alpha1.ProxyDeployment{},
+							},
 						},
 					},
 				},
@@ -3056,169 +3080,172 @@ func fullyDefinedGatewayParameters(name, namespace string) *gw2_v1alpha1.Gateway
 			UID:       "1236",
 		},
 		Spec: gw2_v1alpha1.GatewayParametersSpec{
-			Kube: &gw2_v1alpha1.KubernetesProxyConfig{
-				Deployment: &gw2_v1alpha1.ProxyDeployment{
-					Replicas: ptr.To[int32](3),
-				},
-				EnvoyContainer: &gw2_v1alpha1.EnvoyContainer{
-					Bootstrap: &gw2_v1alpha1.EnvoyBootstrap{
-						LogLevel: ptr.To("debug"),
-						ComponentLogLevels: map[string]string{
-							"router":   "info",
-							"listener": "warn",
-						},
+			Kube: &gw2_v1alpha1.KubernetesProxyFullConfig{
+				KubernetesProxyConfig: &gw2_v1alpha1.KubernetesProxyConfig{
+					Deployment: &gw2_v1alpha1.ProxyDeployment{
+						Replicas: ptr.To[int32](3),
 					},
-					Image: &gw2_v1alpha1.Image{
-						Registry:   ptr.To("foo"),
-						Repository: ptr.To("bar"),
-						Tag:        ptr.To("bat"),
-						PullPolicy: ptr.To(corev1.PullAlways),
-					},
-					SecurityContext: &corev1.SecurityContext{
-						RunAsUser: ptr.To(int64(111)),
-					},
-					Resources: &corev1.ResourceRequirements{
-						Limits:   corev1.ResourceList{"cpu": resource.MustParse("101m")},
-						Requests: corev1.ResourceList{"cpu": resource.MustParse("103m")},
-					},
-				},
-				SdsContainer: &gw2_v1alpha1.SdsContainer{
-					Image: &gw2_v1alpha1.Image{
-						Registry:   ptr.To("sds-registry"),
-						Repository: ptr.To("sds-repository"),
-						Tag:        nil,
-						Digest:     ptr.To("sds-digest"),
-						PullPolicy: ptr.To(corev1.PullAlways),
-					},
-					SecurityContext: &corev1.SecurityContext{
-						RunAsUser: ptr.To(int64(222)),
-					},
-					Resources: &corev1.ResourceRequirements{
-						Limits:   corev1.ResourceList{"cpu": resource.MustParse("201m")},
-						Requests: corev1.ResourceList{"cpu": resource.MustParse("203m")},
-					},
-					Bootstrap: &gw2_v1alpha1.SdsBootstrap{
-						LogLevel: ptr.To("debug"),
-					},
-				},
-				PodTemplate: &gw2_v1alpha1.Pod{
-					ExtraAnnotations: map[string]string{
-						"pod-anno": "foo",
-					},
-					ExtraLabels: map[string]string{
-						"pod-label": "foo",
-					},
-					SecurityContext: &corev1.PodSecurityContext{
-						RunAsUser: ptr.To(int64(333)),
-					},
-					ImagePullSecrets: []corev1.LocalObjectReference{{
-						Name: "pod-image-pull-secret",
-					}},
-					NodeSelector: map[string]string{
-						"pod-node-selector": "foo",
-					},
-					Affinity: &corev1.Affinity{
-						NodeAffinity: &corev1.NodeAffinity{
-							RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
-								NodeSelectorTerms: []corev1.NodeSelectorTerm{{
-									MatchExpressions: []corev1.NodeSelectorRequirement{{
-										Key:      "pod-affinity-nodeAffinity-required-expression-key",
-										Operator: "pod-affinity-nodeAffinity-required-expression-operator",
-										Values:   []string{"foo"},
-									}},
-									MatchFields: []corev1.NodeSelectorRequirement{{
-										Key:      "pod-affinity-nodeAffinity-required-field-key",
-										Operator: "pod-affinity-nodeAffinity-required-field-operator",
-										Values:   []string{"foo"},
-									}},
-								}},
+					EnvoyContainer: &gw2_v1alpha1.EnvoyContainer{
+						Bootstrap: &gw2_v1alpha1.EnvoyBootstrap{
+							LogLevel: ptr.To("debug"),
+							ComponentLogLevels: map[string]string{
+								"router":   "info",
+								"listener": "warn",
 							},
 						},
-					},
-					Tolerations: []corev1.Toleration{{
-						Key:               "pod-toleration-key",
-						Operator:          "pod-toleration-operator",
-						Value:             "pod-toleration-value",
-						Effect:            "pod-toleration-effect",
-						TolerationSeconds: ptr.To(int64(1)),
-					}},
-					TopologySpreadConstraints: []corev1.TopologySpreadConstraint{{
-						MaxSkew:           1,
-						TopologyKey:       "pod-topology-spread-constraint-topology-key",
-						WhenUnsatisfiable: "pod-topology-spread-constraint-when-unsatisfiable",
-						LabelSelector:     &metav1.LabelSelector{MatchLabels: map[string]string{"pod-topology-spread-constraint-label-selector": "foo"}},
-					}},
-				},
-				Service: &gw2_v1alpha1.Service{
-					Type:      ptr.To(corev1.ServiceTypeClusterIP),
-					ClusterIP: ptr.To("99.99.99.99"),
-					ExtraAnnotations: map[string]string{
-						"service-anno": "foo",
-					},
-					ExtraLabels: map[string]string{
-						"service-label": "foo",
-					},
-					ExternalTrafficPolicy: ptr.To(string(corev1.ServiceExternalTrafficPolicyTypeLocal)),
-				},
-				ServiceAccount: &gw2_v1alpha1.ServiceAccount{
-					ExtraLabels: map[string]string{
-						"a": "b",
-					},
-					ExtraAnnotations: map[string]string{
-						"c": "d",
-					},
-				},
-				Istio: &gw2_v1alpha1.IstioIntegration{
-					IstioProxyContainer: &gw2_v1alpha1.IstioContainer{
 						Image: &gw2_v1alpha1.Image{
-							Registry:   ptr.To("istio-registry"),
-							Repository: ptr.To("istio-repository"),
-							Tag:        ptr.To(""),
-							Digest:     ptr.To("istio-digest"),
+							Registry:   ptr.To("foo"),
+							Repository: ptr.To("bar"),
+							Tag:        ptr.To("bat"),
 							PullPolicy: ptr.To(corev1.PullAlways),
 						},
 						SecurityContext: &corev1.SecurityContext{
-							RunAsUser: ptr.To(int64(444)),
+							RunAsUser: ptr.To(int64(111)),
 						},
 						Resources: &corev1.ResourceRequirements{
-							Limits:   corev1.ResourceList{"cpu": resource.MustParse("301m")},
-							Requests: corev1.ResourceList{"cpu": resource.MustParse("303m")},
-						},
-						LogLevel:              ptr.To("debug"),
-						IstioDiscoveryAddress: ptr.To("istioDiscoveryAddress"),
-						IstioMetaMeshId:       ptr.To("istioMetaMeshId"),
-						IstioMetaClusterId:    ptr.To("istioMetaClusterId"),
-					},
-				},
-				AiExtension: &gw2_v1alpha1.AiExtension{
-					Enabled: ptr.To(true),
-					Ports: []corev1.ContainerPort{
-						{
-							Name:          "foo",
-							ContainerPort: 80,
+							Limits:   corev1.ResourceList{"cpu": resource.MustParse("101m")},
+							Requests: corev1.ResourceList{"cpu": resource.MustParse("103m")},
 						},
 					},
-					Image: &gw2_v1alpha1.Image{
-						Registry:   ptr.To("ai-extension-registry"),
-						Repository: ptr.To("ai-extension-repository"),
-						Tag:        ptr.To("ai-extension-tag"),
-						Digest:     ptr.To("ai-extension-digest"),
-						PullPolicy: ptr.To(corev1.PullAlways),
-					},
-					Tracing: &gw2_v1alpha1.AiExtensionTrace{
-						EndPoint: "http://my-otel-collector.svc.cluster.local:4317",
-						Sampler: &gw2_v1alpha1.OTelTracesSampler{
-							SamplerType: ptr.To(gw2_v1alpha1.OTelTracesSamplerTraceidratio),
-							SamplerArg:  ptr.To("0.5"),
+					SdsContainer: &gw2_v1alpha1.SdsContainer{
+						Image: &gw2_v1alpha1.Image{
+							Registry:   ptr.To("sds-registry"),
+							Repository: ptr.To("sds-repository"),
+							Tag:        nil,
+							Digest:     ptr.To("sds-digest"),
+							PullPolicy: ptr.To(corev1.PullAlways),
 						},
-						Timeout:  &metav1.Duration{Duration: 100 * time.Second},
-						Protocol: ptr.To(gw2_v1alpha1.OTLPTracesProtocolTypeGrpc),
+						SecurityContext: &corev1.SecurityContext{
+							RunAsUser: ptr.To(int64(222)),
+						},
+						Resources: &corev1.ResourceRequirements{
+							Limits:   corev1.ResourceList{"cpu": resource.MustParse("201m")},
+							Requests: corev1.ResourceList{"cpu": resource.MustParse("203m")},
+						},
+						Bootstrap: &gw2_v1alpha1.SdsBootstrap{
+							LogLevel: ptr.To("debug"),
+						},
+					},
+					PodTemplate: &gw2_v1alpha1.Pod{
+						ExtraAnnotations: map[string]string{
+							"pod-anno": "foo",
+						},
+						ExtraLabels: map[string]string{
+							"pod-label": "foo",
+						},
+						SecurityContext: &corev1.PodSecurityContext{
+							RunAsUser: ptr.To(int64(333)),
+						},
+						ImagePullSecrets: []corev1.LocalObjectReference{{
+							Name: "pod-image-pull-secret",
+						}},
+						NodeSelector: map[string]string{
+							"pod-node-selector": "foo",
+						},
+						Affinity: &corev1.Affinity{
+							NodeAffinity: &corev1.NodeAffinity{
+								RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+									NodeSelectorTerms: []corev1.NodeSelectorTerm{{
+										MatchExpressions: []corev1.NodeSelectorRequirement{{
+											Key:      "pod-affinity-nodeAffinity-required-expression-key",
+											Operator: "pod-affinity-nodeAffinity-required-expression-operator",
+											Values:   []string{"foo"},
+										}},
+										MatchFields: []corev1.NodeSelectorRequirement{{
+											Key:      "pod-affinity-nodeAffinity-required-field-key",
+											Operator: "pod-affinity-nodeAffinity-required-field-operator",
+											Values:   []string{"foo"},
+										}},
+									}},
+								},
+							},
+						},
+						Tolerations: []corev1.Toleration{{
+							Key:               "pod-toleration-key",
+							Operator:          "pod-toleration-operator",
+							Value:             "pod-toleration-value",
+							Effect:            "pod-toleration-effect",
+							TolerationSeconds: ptr.To(int64(1)),
+						}},
+						TopologySpreadConstraints: []corev1.TopologySpreadConstraint{{
+							MaxSkew:           1,
+							TopologyKey:       "pod-topology-spread-constraint-topology-key",
+							WhenUnsatisfiable: "pod-topology-spread-constraint-when-unsatisfiable",
+							LabelSelector:     &metav1.LabelSelector{MatchLabels: map[string]string{"pod-topology-spread-constraint-label-selector": "foo"}},
+						}},
+					},
+					Service: &gw2_v1alpha1.Service{
+						Type:      ptr.To(corev1.ServiceTypeClusterIP),
+						ClusterIP: ptr.To("99.99.99.99"),
+						ExtraAnnotations: map[string]string{
+							"service-anno": "foo",
+						},
+						ExtraLabels: map[string]string{
+							"service-label": "foo",
+						},
+						ExternalTrafficPolicy: ptr.To(string(corev1.ServiceExternalTrafficPolicyTypeLocal)),
+					},
+					ServiceAccount: &gw2_v1alpha1.ServiceAccount{
+						ExtraLabels: map[string]string{
+							"a": "b",
+						},
+						ExtraAnnotations: map[string]string{
+							"c": "d",
+						},
+					},
+					Istio: &gw2_v1alpha1.IstioIntegration{
+						IstioProxyContainer: &gw2_v1alpha1.IstioContainer{
+							Image: &gw2_v1alpha1.Image{
+								Registry:   ptr.To("istio-registry"),
+								Repository: ptr.To("istio-repository"),
+								Tag:        ptr.To(""),
+								Digest:     ptr.To("istio-digest"),
+								PullPolicy: ptr.To(corev1.PullAlways),
+							},
+							SecurityContext: &corev1.SecurityContext{
+								RunAsUser: ptr.To(int64(444)),
+							},
+							Resources: &corev1.ResourceRequirements{
+								Limits:   corev1.ResourceList{"cpu": resource.MustParse("301m")},
+								Requests: corev1.ResourceList{"cpu": resource.MustParse("303m")},
+							},
+							LogLevel:              ptr.To("debug"),
+							IstioDiscoveryAddress: ptr.To("istioDiscoveryAddress"),
+							IstioMetaMeshId:       ptr.To("istioMetaMeshId"),
+							IstioMetaClusterId:    ptr.To("istioMetaClusterId"),
+						},
+					},
+					AiExtension: &gw2_v1alpha1.AiExtension{
+						Enabled: ptr.To(true),
+						Ports: []corev1.ContainerPort{
+							{
+								Name:          "foo",
+								ContainerPort: 80,
+							},
+						},
+						Image: &gw2_v1alpha1.Image{
+							Registry:   ptr.To("ai-extension-registry"),
+							Repository: ptr.To("ai-extension-repository"),
+							Tag:        ptr.To("ai-extension-tag"),
+							Digest:     ptr.To("ai-extension-digest"),
+							PullPolicy: ptr.To(corev1.PullAlways),
+						},
+						Tracing: &gw2_v1alpha1.AiExtensionTrace{
+							EndPoint: "http://my-otel-collector.svc.cluster.local:4317",
+							Sampler: &gw2_v1alpha1.OTelTracesSampler{
+								SamplerType: ptr.To(gw2_v1alpha1.OTelTracesSamplerTraceidratio),
+								SamplerArg:  ptr.To("0.5"),
+							},
+							Timeout:  &metav1.Duration{Duration: 100 * time.Second},
+							Protocol: ptr.To(gw2_v1alpha1.OTLPTracesProtocolTypeGrpc),
+						},
 					},
 				},
 			},
 		},
 	}
 }
+
 func newFakeClientWithObjs(objs ...client.Object) client.Client {
 	return deployertest.NewFakeClientWithObjs(objs...)
 }

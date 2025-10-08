@@ -42,7 +42,7 @@ type GatewayParametersSpec struct {
 	// The proxy will be deployed on Kubernetes.
 	//
 	// +optional
-	Kube *KubernetesProxyConfig `json:"kube,omitempty"`
+	Kube *KubernetesProxyFullConfig `json:"kube,omitempty"`
 
 	// The proxy will be self-managed and not auto-provisioned.
 	//
@@ -55,7 +55,7 @@ func (in *GatewayParametersSpec) GetKube() *KubernetesProxyConfig {
 	if in == nil {
 		return nil
 	}
-	return in.Kube
+	return in.Kube.KubernetesProxyConfig
 }
 
 func (in *GatewayParametersSpec) GetSelfManaged() *SelfManagedGateway {
@@ -69,6 +69,22 @@ func (in *GatewayParametersSpec) GetSelfManaged() *SelfManagedGateway {
 type GatewayParametersStatus struct{}
 
 type SelfManagedGateway struct{}
+
+// KubernetesProxyFullConfig configures the set of Kubernetes resources that will be provisioned
+// for a given Gateway.
+type KubernetesProxyFullConfig struct {
+	*KubernetesProxyConfig `json:",inline"`
+	*DeprecatedProxyConfig `json:",inline"`
+}
+
+// DeprecatedProxyConfig contains deprecated fields that are used alongside the KubernetesProxyConfig type.
+type DeprecatedProxyConfig struct {
+	// Deprecated: Prefer to use omitDefaultSecurityContext instead. Will be
+	// removed in the next release.
+	//
+	// Used to unset the `runAsUser` values in security contexts.
+	FloatingUserId *bool `json:"floatingUserId,omitempty"`
+}
 
 // KubernetesProxyConfig configures the set of Kubernetes resources that will be provisioned
 // for a given Gateway.
@@ -130,12 +146,6 @@ type KubernetesProxyConfig struct {
 	//
 	// +optional
 	Agentgateway *Agentgateway `json:"agentgateway,omitempty"`
-
-	// Deprecated: Prefer to use omitDefaultSecurityContext instead. Will be
-	// removed in the next release.
-	//
-	// Used to unset the `runAsUser` values in security contexts.
-	FloatingUserId *bool `json:"floatingUserId,omitempty"`
 
 	// OmitDefaultSecurityContext is used to control whether or not
 	// `securityContext` fields should be rendered for the various generated
@@ -222,18 +232,18 @@ func (in *KubernetesProxyConfig) GetAgentgateway() *Agentgateway {
 	return in.Agentgateway
 }
 
-func (in *KubernetesProxyConfig) GetFloatingUserId() *bool {
-	if in == nil {
-		return nil
-	}
-	return in.FloatingUserId
-}
-
 func (in *KubernetesProxyConfig) GetOmitDefaultSecurityContext() *bool {
 	if in == nil {
 		return nil
 	}
 	return in.OmitDefaultSecurityContext
+}
+
+func (in *KubernetesProxyFullConfig) GetFloatingUserId() *bool {
+	if in == nil {
+		return nil
+	}
+	return in.FloatingUserId
 }
 
 // ProxyDeployment configures the Proxy deployment in Kubernetes.

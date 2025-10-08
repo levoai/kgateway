@@ -62,6 +62,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/kgateway-dev/kgateway/v2/api/v1alpha1.CustomAttributeMetadata":                   schema_kgateway_v2_api_v1alpha1_CustomAttributeMetadata(ref),
 		"github.com/kgateway-dev/kgateway/v2/api/v1alpha1.CustomLabel":                               schema_kgateway_v2_api_v1alpha1_CustomLabel(ref),
 		"github.com/kgateway-dev/kgateway/v2/api/v1alpha1.CustomResponse":                            schema_kgateway_v2_api_v1alpha1_CustomResponse(ref),
+		"github.com/kgateway-dev/kgateway/v2/api/v1alpha1.DeprecatedProxyConfig":                     schema_kgateway_v2_api_v1alpha1_DeprecatedProxyConfig(ref),
 		"github.com/kgateway-dev/kgateway/v2/api/v1alpha1.DirectResponse":                            schema_kgateway_v2_api_v1alpha1_DirectResponse(ref),
 		"github.com/kgateway-dev/kgateway/v2/api/v1alpha1.DirectResponseList":                        schema_kgateway_v2_api_v1alpha1_DirectResponseList(ref),
 		"github.com/kgateway-dev/kgateway/v2/api/v1alpha1.DirectResponseSpec":                        schema_kgateway_v2_api_v1alpha1_DirectResponseSpec(ref),
@@ -113,6 +114,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/kgateway-dev/kgateway/v2/api/v1alpha1.KeyAnyValue":                               schema_kgateway_v2_api_v1alpha1_KeyAnyValue(ref),
 		"github.com/kgateway-dev/kgateway/v2/api/v1alpha1.KeyAnyValueList":                           schema_kgateway_v2_api_v1alpha1_KeyAnyValueList(ref),
 		"github.com/kgateway-dev/kgateway/v2/api/v1alpha1.KubernetesProxyConfig":                     schema_kgateway_v2_api_v1alpha1_KubernetesProxyConfig(ref),
+		"github.com/kgateway-dev/kgateway/v2/api/v1alpha1.KubernetesProxyFullConfig":                 schema_kgateway_v2_api_v1alpha1_KubernetesProxyFullConfig(ref),
 		"github.com/kgateway-dev/kgateway/v2/api/v1alpha1.LLMProvider":                               schema_kgateway_v2_api_v1alpha1_LLMProvider(ref),
 		"github.com/kgateway-dev/kgateway/v2/api/v1alpha1.LoadBalancer":                              schema_kgateway_v2_api_v1alpha1_LoadBalancer(ref),
 		"github.com/kgateway-dev/kgateway/v2/api/v1alpha1.LoadBalancerLeastRequestConfig":            schema_kgateway_v2_api_v1alpha1_LoadBalancerLeastRequestConfig(ref),
@@ -2774,6 +2776,26 @@ func schema_kgateway_v2_api_v1alpha1_CustomResponse(ref common.ReferenceCallback
 	}
 }
 
+func schema_kgateway_v2_api_v1alpha1_DeprecatedProxyConfig(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "DeprecatedProxyConfig contains deprecated fields that are used alongside the KubernetesProxyConfig type.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"floatingUserId": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Deprecated: Prefer to use omitDefaultSecurityContext instead. Will be removed in the next release.\n\nUsed to unset the `runAsUser` values in security contexts.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
 func schema_kgateway_v2_api_v1alpha1_DirectResponse(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -3779,7 +3801,7 @@ func schema_kgateway_v2_api_v1alpha1_GatewayParametersSpec(ref common.ReferenceC
 					"kube": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The proxy will be deployed on Kubernetes.",
-							Ref:         ref("github.com/kgateway-dev/kgateway/v2/api/v1alpha1.KubernetesProxyConfig"),
+							Ref:         ref("github.com/kgateway-dev/kgateway/v2/api/v1alpha1.KubernetesProxyFullConfig"),
 						},
 					},
 					"selfManaged": {
@@ -3792,7 +3814,7 @@ func schema_kgateway_v2_api_v1alpha1_GatewayParametersSpec(ref common.ReferenceC
 			},
 		},
 		Dependencies: []string{
-			"github.com/kgateway-dev/kgateway/v2/api/v1alpha1.KubernetesProxyConfig", "github.com/kgateway-dev/kgateway/v2/api/v1alpha1.SelfManagedGateway"},
+			"github.com/kgateway-dev/kgateway/v2/api/v1alpha1.KubernetesProxyFullConfig", "github.com/kgateway-dev/kgateway/v2/api/v1alpha1.SelfManagedGateway"},
 	}
 }
 
@@ -4785,16 +4807,98 @@ func schema_kgateway_v2_api_v1alpha1_KubernetesProxyConfig(ref common.ReferenceC
 							Ref:         ref("github.com/kgateway-dev/kgateway/v2/api/v1alpha1.Agentgateway"),
 						},
 					},
-					"floatingUserId": {
+					"omitDefaultSecurityContext": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Deprecated: Prefer to use omitDefaultSecurityContext instead. Will be removed in the next release.\n\nUsed to unset the `runAsUser` values in security contexts.",
+							Description: "OmitDefaultSecurityContext is used to control whether or not `securityContext` fields should be rendered for the various generated Deployments/Containers that are dynamically provisioned by the deployer.\n\nWhen set to true, no `securityContexts` will be provided and will left to the user/platform to be provided.\n\nThis should be enabled on platforms such as Red Hat OpenShift where the `securityContext` will be dynamically added to enforce the appropriate level of security.",
 							Type:        []string{"boolean"},
 							Format:      "",
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/kgateway-dev/kgateway/v2/api/v1alpha1.Agentgateway", "github.com/kgateway-dev/kgateway/v2/api/v1alpha1.AiExtension", "github.com/kgateway-dev/kgateway/v2/api/v1alpha1.EnvoyContainer", "github.com/kgateway-dev/kgateway/v2/api/v1alpha1.IstioIntegration", "github.com/kgateway-dev/kgateway/v2/api/v1alpha1.Pod", "github.com/kgateway-dev/kgateway/v2/api/v1alpha1.ProxyDeployment", "github.com/kgateway-dev/kgateway/v2/api/v1alpha1.SdsContainer", "github.com/kgateway-dev/kgateway/v2/api/v1alpha1.Service", "github.com/kgateway-dev/kgateway/v2/api/v1alpha1.ServiceAccount", "github.com/kgateway-dev/kgateway/v2/api/v1alpha1.StatsConfig"},
+	}
+}
+
+func schema_kgateway_v2_api_v1alpha1_KubernetesProxyFullConfig(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "KubernetesProxyFullConfig configures the set of Kubernetes resources that will be provisioned for a given Gateway.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"deployment": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Use a Kubernetes deployment as the proxy workload type. Currently, this is the only supported workload type.",
+							Ref:         ref("github.com/kgateway-dev/kgateway/v2/api/v1alpha1.ProxyDeployment"),
+						},
+					},
+					"envoyContainer": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Configuration for the container running Envoy. If agentgateway is enabled, the EnvoyContainer values will be ignored.",
+							Ref:         ref("github.com/kgateway-dev/kgateway/v2/api/v1alpha1.EnvoyContainer"),
+						},
+					},
+					"sdsContainer": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Configuration for the container running the Secret Discovery Service (SDS).",
+							Ref:         ref("github.com/kgateway-dev/kgateway/v2/api/v1alpha1.SdsContainer"),
+						},
+					},
+					"podTemplate": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Configuration for the pods that will be created.",
+							Ref:         ref("github.com/kgateway-dev/kgateway/v2/api/v1alpha1.Pod"),
+						},
+					},
+					"service": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Configuration for the Kubernetes Service that exposes the Envoy proxy over the network.",
+							Ref:         ref("github.com/kgateway-dev/kgateway/v2/api/v1alpha1.Service"),
+						},
+					},
+					"serviceAccount": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Configuration for the Kubernetes ServiceAccount used by the Envoy pod.",
+							Ref:         ref("github.com/kgateway-dev/kgateway/v2/api/v1alpha1.ServiceAccount"),
+						},
+					},
+					"istio": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Configuration for the Istio integration.",
+							Ref:         ref("github.com/kgateway-dev/kgateway/v2/api/v1alpha1.IstioIntegration"),
+						},
+					},
+					"stats": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Configuration for the stats server.",
+							Ref:         ref("github.com/kgateway-dev/kgateway/v2/api/v1alpha1.StatsConfig"),
+						},
+					},
+					"aiExtension": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Deprecated: `aiExtension` is deprecated in v2.1 and will be removed in v2.2. Prefer to use `agentgateway` instead.\n\nConfiguration for the AI extension.",
+							Ref:         ref("github.com/kgateway-dev/kgateway/v2/api/v1alpha1.AiExtension"),
+						},
+					},
+					"agentgateway": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Configure the agentgateway integration. If agentgateway is disabled, the EnvoyContainer values will be used by default to configure the data plane proxy.",
+							Ref:         ref("github.com/kgateway-dev/kgateway/v2/api/v1alpha1.Agentgateway"),
 						},
 					},
 					"omitDefaultSecurityContext": {
 						SchemaProps: spec.SchemaProps{
 							Description: "OmitDefaultSecurityContext is used to control whether or not `securityContext` fields should be rendered for the various generated Deployments/Containers that are dynamically provisioned by the deployer.\n\nWhen set to true, no `securityContexts` will be provided and will left to the user/platform to be provided.\n\nThis should be enabled on platforms such as Red Hat OpenShift where the `securityContext` will be dynamically added to enforce the appropriate level of security.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"floatingUserId": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Deprecated: Prefer to use omitDefaultSecurityContext instead. Will be removed in the next release.\n\nUsed to unset the `runAsUser` values in security contexts.",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
