@@ -55,6 +55,9 @@ func (in *GatewayParametersSpec) GetKube() *KubernetesProxyConfig {
 	if in == nil {
 		return nil
 	}
+	if in.Kube == nil {
+		return nil
+	}
 	return in.Kube.KubernetesProxyConfig
 }
 
