@@ -193,7 +193,7 @@ func (k *kGatewayParameters) getGatewayParametersForGateway(ctx context.Context,
 	}
 
 	mergedGwp := defaultGwp
-	if ptr.Deref(gwp.Spec.Kube.GetOmitDefaultSecurityContext(), false) {
+	if ptr.Deref(gwp.Spec.GetKube().GetOmitDefaultSecurityContext(), false) {
 		// Need to regenerate defaults with OmitDefaultSecurityContext=true
 		gwc, err := getGatewayClassFromGateway(ctx, k.cli, gw)
 		if err != nil {
@@ -263,17 +263,15 @@ func (k *kGatewayParameters) getGatewayParametersForGatewayClass(ctx context.Con
 	// primarily done to ensure that the image registry and tag are
 	// correctly set when they aren't overridden by the GatewayParameters.
 	mergedGwp := defaultGwp
-	if gwp.Spec.Kube != nil {
-		if ptr.Deref(gwp.Spec.Kube.GetOmitDefaultSecurityContext(), false) {
-			mergedGwp = deployer.GetInMemoryGatewayParameters(
-				gwc.GetName(),
-				k.inputs.ImageInfo,
-				k.inputs.GatewayClassName,
-				k.inputs.WaypointGatewayClassName,
-				k.inputs.AgentgatewayClassName,
-				true,
-			)
-		}
+	if ptr.Deref(gwp.Spec.GetKube().GetOmitDefaultSecurityContext(), false) {
+		mergedGwp = deployer.GetInMemoryGatewayParameters(
+			gwc.GetName(),
+			k.inputs.ImageInfo,
+			k.inputs.GatewayClassName,
+			k.inputs.WaypointGatewayClassName,
+			k.inputs.AgentgatewayClassName,
+			true,
+		)
 	}
 	deployer.DeepMergeGatewayParameters(mergedGwp, gwp)
 	return mergedGwp, nil
@@ -339,7 +337,7 @@ func (k *kGatewayParameters) getValues(gw *api.Gateway, gwParam *v1alpha1.Gatewa
 	// (note: if we add new fields to GatewayParameters, they will
 	// need to be plumbed through here as well)
 
-	kubeProxyConfig := gwParam.Spec.Kube
+	kubeProxyConfig := gwParam.Spec.GetKube()
 	deployConfig := kubeProxyConfig.GetDeployment()
 	podConfig := kubeProxyConfig.GetPodTemplate()
 	envoyContainerConfig := kubeProxyConfig.GetEnvoyContainer()
