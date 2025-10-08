@@ -263,15 +263,17 @@ func (k *kGatewayParameters) getGatewayParametersForGatewayClass(ctx context.Con
 	// primarily done to ensure that the image registry and tag are
 	// correctly set when they aren't overridden by the GatewayParameters.
 	mergedGwp := defaultGwp
-	if ptr.Deref(gwp.Spec.Kube.GetOmitDefaultSecurityContext(), false) {
-		mergedGwp = deployer.GetInMemoryGatewayParameters(
-			gwc.GetName(),
-			k.inputs.ImageInfo,
-			k.inputs.GatewayClassName,
-			k.inputs.WaypointGatewayClassName,
-			k.inputs.AgentgatewayClassName,
-			true,
-		)
+	if gwp.Spec.Kube != nil {
+		if ptr.Deref(gwp.Spec.Kube.GetOmitDefaultSecurityContext(), false) {
+			mergedGwp = deployer.GetInMemoryGatewayParameters(
+				gwc.GetName(),
+				k.inputs.ImageInfo,
+				k.inputs.GatewayClassName,
+				k.inputs.WaypointGatewayClassName,
+				k.inputs.AgentgatewayClassName,
+				true,
+			)
+		}
 	}
 	deployer.DeepMergeGatewayParameters(mergedGwp, gwp)
 	return mergedGwp, nil
