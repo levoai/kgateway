@@ -1591,7 +1591,7 @@ var _ = Describe("Deployer", func() {
 				By("verifying deployment inherited default replicas")
 				dep := objs.findDeployment(defaultNamespace, defaultDeploymentName)
 				Expect(dep).ToNot(BeNil())
-				Expect(*dep.Spec.Replicas).To(Equal(int32(1)))
+				Expect(dep.Spec.Replicas).To(BeNil())
 
 				By("verifying envoy container log level was overridden")
 				envoyContainer := dep.Spec.Template.Spec.Containers[0]
@@ -2762,7 +2762,7 @@ var _ = Describe("Deployer", func() {
 					return nil
 				},
 			}),
-			Entry("OmitReplicas is true", &input{
+			Entry("Replicas is not set (default)", &input{
 				dInputs: defaultDeployerInputs(),
 				gw:      defaultGateway(),
 				defaultGwp: &gw2_v1alpha1.GatewayParameters{
@@ -2821,36 +2821,6 @@ var _ = Describe("Deployer", func() {
 					deployment := objs.findDeployment(defaultNamespace, defaultServiceName)
 					Expect(deployment).NotTo(BeNil())
 					Expect(*deployment.Spec.Replicas).To(Equal(int32(3)))
-					return nil
-				},
-			}),
-			Entry("replicas and omitReplicas aren't set (default)", &input{
-				dInputs: defaultDeployerInputs(),
-				gw:      defaultGateway(),
-				defaultGwp: &gw2_v1alpha1.GatewayParameters{
-					TypeMeta: metav1.TypeMeta{
-						Kind:       wellknown.GatewayParametersGVK.Kind,
-						APIVersion: gw2_v1alpha1.GroupVersion.String(),
-					},
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      wellknown.DefaultGatewayParametersName,
-						Namespace: defaultNamespace,
-						UID:       "1237",
-					},
-					Spec: gw2_v1alpha1.GatewayParametersSpec{
-						Kube: &gw2_v1alpha1.KubernetesProxyFullConfig{
-							KubernetesProxyConfig: &gw2_v1alpha1.KubernetesProxyConfig{
-								Deployment: &gw2_v1alpha1.ProxyDeployment{},
-							},
-						},
-					},
-				},
-				overrideGwp: &gw2_v1alpha1.GatewayParameters{},
-			}, &expectedOutput{
-				validationFunc: func(objs clientObjects, inp *input) error {
-					deployment := objs.findDeployment(defaultNamespace, defaultServiceName)
-					Expect(deployment).NotTo(BeNil())
-					Expect(*deployment.Spec.Replicas).To(Equal(int32(1))) // default replicas is 1
 					return nil
 				},
 			}),

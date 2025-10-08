@@ -40,7 +40,7 @@ func TestDeepMergeGatewayParameters(t *testing.T) {
 			},
 		},
 		{
-			name: "should override kube deployment replicas",
+			name: "should override kube deployment replicas by default",
 			dst: &gw2_v1alpha1.GatewayParameters{
 				Spec: gw2_v1alpha1.GatewayParametersSpec{
 					Kube: &gw2_v1alpha1.KubernetesProxyFullConfig{},
@@ -70,7 +70,7 @@ func TestDeepMergeGatewayParameters(t *testing.T) {
 			},
 		},
 		{
-			name: "should override kube deployment omitReplicas",
+			name: "should override kube deployment replicas if explicit",
 			dst: &gw2_v1alpha1.GatewayParameters{
 				Spec: gw2_v1alpha1.GatewayParametersSpec{
 					Kube: &gw2_v1alpha1.KubernetesProxyFullConfig{
