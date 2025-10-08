@@ -38,9 +38,16 @@ func DeepMergeGatewayParameters(dst, src *v1alpha1.GatewayParameters) {
 	dstKube.Istio = deepMergeIstioIntegration(dstKube.GetIstio(), srcKube.GetIstio())
 	dstKube.Stats = deepMergeStatsConfig(dstKube.GetStats(), srcKube.GetStats())
 	dstKube.AiExtension = deepMergeAIExtension(dstKube.GetAiExtension(), srcKube.GetAiExtension())
-	dstKube.FloatingUserId = MergePointers(dstKube.GetFloatingUserId(), srcKube.GetFloatingUserId())
 	dstKube.OmitDefaultSecurityContext = MergePointers(dstKube.GetOmitDefaultSecurityContext(), srcKube.GetOmitDefaultSecurityContext())
 	dstKube.Agentgateway = deepMergeAgentgateway(dstKube.GetAgentgateway(), srcKube.GetAgentgateway())
+
+	floatingUserId := MergePointers(dstKube.GetFloatingUserId(), srcKube.GetFloatingUserId())
+	if floatingUserId != nil {
+		if dstKube.DeprecatedProxyConfig == nil {
+			dstKube.DeprecatedProxyConfig = &v1alpha1.DeprecatedProxyConfig{}
+		}
+		dstKube.DeprecatedProxyConfig.FloatingUserId = floatingUserId
+	}
 }
 
 // MergePointers will decide whether to use dst or src without dereferencing or recursing
