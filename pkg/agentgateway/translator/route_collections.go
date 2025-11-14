@@ -25,9 +25,9 @@ import (
 
 	"github.com/kgateway-dev/kgateway/v2/api/v1alpha1"
 	"github.com/kgateway-dev/kgateway/v2/internal/kgateway/agentgatewaysyncer/status"
-	"github.com/kgateway-dev/kgateway/v2/internal/kgateway/krtcollections"
 	"github.com/kgateway-dev/kgateway/v2/internal/kgateway/wellknown"
 	agwir "github.com/kgateway-dev/kgateway/v2/pkg/agentgateway/ir"
+	"github.com/kgateway-dev/kgateway/v2/pkg/krtcollections"
 	"github.com/kgateway-dev/kgateway/v2/pkg/pluginsdk/ir"
 	"github.com/kgateway-dev/kgateway/v2/pkg/pluginsdk/krtutil"
 	"github.com/kgateway-dev/kgateway/v2/pkg/pluginsdk/reporter"
