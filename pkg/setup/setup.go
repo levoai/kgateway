@@ -45,6 +45,7 @@ type Options struct {
 	Validator validator.Validator
 	// ExtraAgwPolicyStatusHandlers maps policy kinds to their status sync handlers for AgentGateway
 	ExtraAgwPolicyStatusHandlers map[string]agwplugins.AgwPolicyStatusSyncHandler
+	CommonCollectionsOptions     []collections.Option
 }
 
 func New(opts Options) (setup.Server, error) {
@@ -68,5 +69,6 @@ func New(opts Options) (setup.Server, error) {
 		setup.WithExtraManagerConfig(opts.ExtraManagerConfig...),
 		setup.WithValidator(opts.Validator),
 		setup.WithExtraAgwPolicyStatusHandlers(opts.ExtraAgwPolicyStatusHandlers),
+		setup.WithCommonCollectionsOptions(opts.CommonCollectionsOptions...),
 	)
 }

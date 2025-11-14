@@ -12,15 +12,21 @@ import (
 	"istio.io/istio/pkg/util/smallset"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	gwv1b1 "sigs.k8s.io/gateway-api/apis/v1beta1"
+	gwv1 "sigs.k8s.io/gateway-api/apis/v1"
+	gwv1a2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gwv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
+	gwxv1a1 "sigs.k8s.io/gateway-api/apisx/v1alpha1"
 
 	apisettings "github.com/kgateway-dev/kgateway/v2/api/settings"
-	"github.com/kgateway-dev/kgateway/v2/internal/kgateway/krtcollections"
 	"github.com/kgateway-dev/kgateway/v2/internal/kgateway/wellknown"
 	"github.com/kgateway-dev/kgateway/v2/pkg/apiclient"
+	kmetrics "github.com/kgateway-dev/kgateway/v2/pkg/krtcollections/metrics"
+	"github.com/kgateway-dev/kgateway/v2/pkg/metrics"
 	"github.com/kgateway-dev/kgateway/v2/pkg/pluginsdk"
 	"github.com/kgateway-dev/kgateway/v2/pkg/pluginsdk/ir"
 	"github.com/kgateway-dev/kgateway/v2/pkg/pluginsdk/krtutil"
+
+	"github.com/kgateway-dev/kgateway/v2/pkg/krtcollections"
 )
 
 type CommonCollections struct {
@@ -49,6 +55,8 @@ type CommonCollections struct {
 	Settings                   apisettings.Settings
 	ControllerName             string
 	AgentgatewayControllerName string
+
+	options *option
 }
 
 func (c *CommonCollections) HasSynced() bool {
@@ -77,7 +85,12 @@ func NewCommonCollections(
 	controllerName string,
 	agentGatewayControllerName string,
 	settings apisettings.Settings,
+	opts ...Option,
 ) (*CommonCollections, error) {
+	options := &option{}
+	for _, fn := range opts {
+		fn(options)
+	}
 	// Namespace collection must be initialized first to enable discovery namespace
 	// selectors to be applies as filters to other collections
 	namespaces, nsClient := krtcollections.NewNamespaceCollection(ctx, client, krtOptions)
@@ -111,7 +124,7 @@ func NewCommonCollections(
 		{Group: "", Kind: "Secret"}: k8sSecrets,
 	}
 
-	refgrantsCol := krt.WrapClient(kclient.NewFilteredDelayed[*gwv1b1.ReferenceGrant](
+	refgrantsCol := krt.WrapClient(kclient.NewFilteredDelayed[*gwv1beta1.ReferenceGrant](
 		client,
 		wellknown.ReferenceGrantGVR,
 		kclient.Filter{ObjectFilter: client.ObjectFilter()},
@@ -158,6 +171,7 @@ func NewCommonCollections(
 
 		ControllerName:             controllerName,
 		AgentgatewayControllerName: agentGatewayControllerName,
+		options:                    options,
 	}, nil
 }
 
@@ -169,14 +183,10 @@ func (c *CommonCollections) InitPlugins(
 	mergedPlugins pluginsdk.Plugin,
 	globalSettings apisettings.Settings,
 ) {
-	gateways, routeIndex, backendIndex, endpointIRs := krtcollections.InitCollections(
+	gateways, routeIndex, backendIndex, endpointIRs := c.InitCollections(
 		ctx,
 		smallset.New(c.ControllerName, c.AgentgatewayControllerName),
-		c.ControllerName,
 		mergedPlugins,
-		c.Client,
-		c.RefGrants,
-		c.KrtOpts,
 		globalSettings,
 	)
 
@@ -185,4 +195,122 @@ func (c *CommonCollections) InitPlugins(
 	c.Routes = routeIndex
 	c.Endpoints = endpointIRs
 	c.GatewayIndex = gateways
+}
+
+func (c *CommonCollections) InitCollections(
+	ctx context.Context,
+	controllerNames smallset.Set[string],
+	plugins pluginsdk.Plugin,
+	globalSettings apisettings.Settings,
+) (*krtcollections.GatewayIndex, *krtcollections.RoutesIndex, *krtcollections.BackendIndex, krt.Collection[ir.EndpointsForBackend]) {
+	// discovery filter
+	filter := kclient.Filter{ObjectFilter: c.Client.ObjectFilter()}
+
+	//nolint:forbidigo // ObjectFilter is not needed for this client as it is cluster scoped
+	gatewayClasses := krt.WrapClient(kclient.New[*gwv1.GatewayClass](c.Client), c.KrtOpts.ToOptions("KubeGatewayClasses")...)
+
+	namespaces, _ := krtcollections.NewNamespaceCollection(ctx, c.Client, c.KrtOpts)
+
+	kubeRawGateways := krt.WrapClient(kclient.NewFilteredDelayed[*gwv1.Gateway](c.Client, wellknown.GatewayGVR, filter), c.KrtOpts.ToOptions("KubeGateways")...)
+	metrics.RegisterEvents(kubeRawGateways, kmetrics.GetResourceMetricEventHandler[*gwv1.Gateway]())
+
+	var kubeRawListenerSets krt.Collection[*gwxv1a1.XListenerSet]
+	// ON_EXPERIMENTAL_PROMOTION : Remove this block
+	// Ref: https://github.com/kgateway-dev/kgateway/issues/12827
+	if globalSettings.EnableExperimentalGatewayAPIFeatures {
+		kubeRawListenerSets = krt.WrapClient(kclient.NewDelayedInformer[*gwxv1a1.XListenerSet](c.Client, wellknown.XListenerSetGVR, kubetypes.StandardInformer, filter), c.KrtOpts.ToOptions("KubeListenerSets")...)
+	} else {
+		// If disabled, still build a collection but make it always empty
+		kubeRawListenerSets = krt.NewStaticCollection[*gwxv1a1.XListenerSet](nil, nil, c.KrtOpts.ToOptions("disable/KubeListenerSets")...)
+	}
+	metrics.RegisterEvents(kubeRawListenerSets, kmetrics.GetResourceMetricEventHandler[*gwxv1a1.XListenerSet]())
+
+	var policies *krtcollections.PolicyIndex
+	if globalSettings.EnableEnvoy {
+		policies = krtcollections.NewPolicyIndex(c.KrtOpts, plugins.ContributesPolicies, globalSettings)
+		for _, plugin := range plugins.ContributesPolicies {
+			if plugin.Policies != nil {
+				metrics.RegisterEvents(plugin.Policies, kmetrics.GetResourceMetricEventHandler[ir.PolicyWrapper]())
+			}
+		}
+	}
+
+	gatewayIndexConfig := krtcollections.GatewayIndexConfig{
+		KrtOpts:                               c.KrtOpts,
+		ControllerNames:                       controllerNames,
+		EnvoyControllerName:                   c.ControllerName,
+		PolicyIndex:                           policies,
+		Gateways:                              kubeRawGateways,
+		ListenerSets:                          kubeRawListenerSets,
+		GatewayClasses:                        gatewayClasses,
+		Namespaces:                            namespaces,
+		GatewaysForDeployerTransformationFunc: c.options.gatewayForDeployerTransformationFunc,
+		GatewaysForEnvoyTransformationFunc:    c.options.gatewayForEnvoyTransformationFunc,
+	}
+	gateways := krtcollections.NewGatewayIndex(gatewayIndexConfig)
+
+	if !globalSettings.EnableEnvoy {
+		// For now, the gateway index is used by Agentgateway as well in the deployer
+		return gateways, nil, nil, nil
+	}
+
+	// create the KRT clients, remember to also register any needed types in the type registration setup.
+	httpRoutes := krt.WrapClient(kclient.NewFilteredDelayed[*gwv1.HTTPRoute](c.Client, wellknown.HTTPRouteGVR, filter), c.KrtOpts.ToOptions("HTTPRoute")...)
+	metrics.RegisterEvents(httpRoutes, kmetrics.GetResourceMetricEventHandler[*gwv1.HTTPRoute]())
+
+	tcproutes := krt.WrapClient(kclient.NewDelayedInformer[*gwv1a2.TCPRoute](c.Client, gvr.TCPRoute, kubetypes.StandardInformer, filter), c.KrtOpts.ToOptions("TCPRoute")...)
+	metrics.RegisterEvents(tcproutes, kmetrics.GetResourceMetricEventHandler[*gwv1a2.TCPRoute]())
+
+	tlsRoutes := krt.WrapClient(kclient.NewDelayedInformer[*gwv1a2.TLSRoute](c.Client, gvr.TLSRoute, kubetypes.StandardInformer, filter), c.KrtOpts.ToOptions("TLSRoute")...)
+	metrics.RegisterEvents(tlsRoutes, kmetrics.GetResourceMetricEventHandler[*gwv1a2.TLSRoute]())
+
+	grpcRoutes := krt.WrapClient(kclient.NewFilteredDelayed[*gwv1.GRPCRoute](c.Client, wellknown.GRPCRouteGVR, filter), c.KrtOpts.ToOptions("GRPCRoute")...)
+	metrics.RegisterEvents(grpcRoutes, kmetrics.GetResourceMetricEventHandler[*gwv1.GRPCRoute]())
+
+	backendIndex := krtcollections.NewBackendIndex(c.KrtOpts, policies, c.RefGrants)
+	initBackends(plugins, backendIndex)
+	endpointIRs := initEndpoints(plugins, c.KrtOpts)
+
+	routes := krtcollections.NewRoutesIndex(c.KrtOpts, httpRoutes, grpcRoutes, tcproutes, tlsRoutes, policies, backendIndex, c.RefGrants, globalSettings)
+	return gateways, routes, backendIndex, endpointIRs
+}
+
+func initBackends(plugins pluginsdk.Plugin, backendIndex *krtcollections.BackendIndex) {
+	for gk, plugin := range plugins.ContributesBackends {
+		if plugin.Backends != nil {
+			backendIndex.AddBackends(gk, plugin.Backends, plugin.AliasKinds...)
+		}
+	}
+}
+
+func initEndpoints(plugins pluginsdk.Plugin, krtopts krtutil.KrtOptions) krt.Collection[ir.EndpointsForBackend] {
+	allEndpoints := []krt.Collection[ir.EndpointsForBackend]{}
+	for _, plugin := range plugins.ContributesBackends {
+		if plugin.Endpoints != nil {
+			allEndpoints = append(allEndpoints, plugin.Endpoints)
+		}
+	}
+	// build Endpoint intermediate representation from kubernetes service and extensions
+	// TODO move kube service to be an extension
+	endpointIRs := krt.JoinCollection(allEndpoints, krtopts.ToOptions("EndpointIRs")...)
+	return endpointIRs
+}
+
+type Option func(*option)
+
+type option struct {
+	gatewayForDeployerTransformationFunc krtcollections.GatewaysForDeployerTransformationFunction
+	gatewayForEnvoyTransformationFunc    krtcollections.GatewaysForEnvoyTransformationFunction
+}
+
+func WithGatewayForDeployerTransformationFunc(f func(config *krtcollections.GatewayIndexConfig) func(kctx krt.HandlerContext, gw *gwv1.Gateway) *ir.GatewayForDeployer) Option {
+	return func(o *option) {
+		o.gatewayForDeployerTransformationFunc = f
+	}
+}
+
+func WithGatewayForEnvoyTransformationFunc(f func(config *krtcollections.GatewayIndexConfig) func(kctx krt.HandlerContext, gw *gwv1.Gateway) *ir.Gateway) Option {
+	return func(o *option) {
+		o.gatewayForEnvoyTransformationFunc = f
+	}
 }

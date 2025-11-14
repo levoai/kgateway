@@ -25,12 +25,12 @@ import (
 	"github.com/kgateway-dev/kgateway/v2/internal/kgateway/admin"
 	"github.com/kgateway-dev/kgateway/v2/internal/kgateway/agentgatewaysyncer"
 	"github.com/kgateway-dev/kgateway/v2/internal/kgateway/controller"
-	"github.com/kgateway-dev/kgateway/v2/internal/kgateway/krtcollections"
 	"github.com/kgateway-dev/kgateway/v2/internal/kgateway/wellknown"
 	"github.com/kgateway-dev/kgateway/v2/internal/kgateway/xds"
 	agwplugins "github.com/kgateway-dev/kgateway/v2/pkg/agentgateway/plugins"
 	"github.com/kgateway-dev/kgateway/v2/pkg/apiclient"
 	"github.com/kgateway-dev/kgateway/v2/pkg/deployer"
+	"github.com/kgateway-dev/kgateway/v2/pkg/krtcollections"
 	"github.com/kgateway-dev/kgateway/v2/pkg/logging"
 	"github.com/kgateway-dev/kgateway/v2/pkg/metrics"
 	sdk "github.com/kgateway-dev/kgateway/v2/pkg/pluginsdk"
@@ -187,6 +187,12 @@ func WithExtraAgwPolicyStatusHandlers(handlers map[string]agwplugins.AgwPolicySt
 	}
 }
 
+func WithCommonCollectionsOptions(opts ...collections.Option) func(*setup) {
+	return func(s *setup) {
+		s.commonCollectionsOptions = opts
+	}
+}
+
 type setup struct {
 	apiClient                      apiclient.Client
 	extraInformerCacheSyncHandlers []cache.InformerSynced
@@ -212,6 +218,7 @@ type setup struct {
 	leaderElectionID             string
 	validator                    validator.Validator
 	extraAgwPolicyStatusHandlers map[string]agwplugins.AgwPolicyStatusSyncHandler
+	commonCollectionsOptions     []collections.Option
 }
 
 var _ Server = &setup{}
@@ -361,6 +368,7 @@ func (s *setup) Start(ctx context.Context) error {
 		s.gatewayControllerName,
 		s.agwControllerName,
 		*s.globalSettings,
+		s.commonCollectionsOptions...,
 	)
 	if err != nil {
 		slog.Error("error creating common collections", "error", err)

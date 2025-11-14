@@ -16,10 +16,10 @@ import (
 	gwxv1a1 "sigs.k8s.io/gateway-api/apisx/v1alpha1"
 
 	apilabels "github.com/kgateway-dev/kgateway/v2/api/labels"
-	"github.com/kgateway-dev/kgateway/v2/internal/kgateway/krtcollections"
 	"github.com/kgateway-dev/kgateway/v2/internal/kgateway/translator/utils"
 	delegationutils "github.com/kgateway-dev/kgateway/v2/internal/kgateway/utils/delegation"
 	"github.com/kgateway-dev/kgateway/v2/internal/kgateway/wellknown"
+	"github.com/kgateway-dev/kgateway/v2/pkg/krtcollections"
 	"github.com/kgateway-dev/kgateway/v2/pkg/pluginsdk/ir"
 )
 
@@ -325,10 +325,13 @@ func (r *gatewayQueries) GetRoutesForResource(kctx krt.HandlerContext, ctx conte
 
 	var routes []ir.Route
 	switch resource.(type) {
+	case *gwv1.Gateway:
+		routes = r.collections.Routes.RoutesForGateway(kctx, nns)
 	case *gwxv1a1.XListenerSet:
 		routes = r.collections.Routes.RoutesForListenerSet(kctx, nns)
 	default:
-		routes = r.collections.Routes.RoutesForGateway(kctx, nns)
+		// TODO : Maybe get rid of this switch entirely ??
+		routes = r.collections.Routes.RoutesFor(kctx, nns, resource.GetObjectKind().GroupVersionKind().Group, resource.GetObjectKind().GroupVersionKind().Kind)
 	}
 
 	for _, route := range routes {
@@ -338,18 +341,6 @@ func (r *gatewayQueries) GetRoutesForResource(kctx krt.HandlerContext, ctx conte
 	}
 
 	return ret, nil
-}
-
-func getParentGatewayRef(ls *gwxv1a1.XListenerSet) *types.NamespacedName {
-	ns := ls.Namespace
-	if ls.Spec.ParentRef.Namespace != nil && *ls.Spec.ParentRef.Namespace != "" {
-		ns = string(*ls.Spec.ParentRef.Namespace)
-	}
-
-	return &types.NamespacedName{
-		Namespace: ns,
-		Name:      string(ls.Spec.ParentRef.Name),
-	}
 }
 
 func (r *gatewayQueries) GetRoutesForGateway(kctx krt.HandlerContext, ctx context.Context, gw *ir.Gateway) (*RoutesForGwResult, error) {
@@ -366,6 +357,17 @@ func (r *gatewayQueries) GetRoutesForGateway(kctx krt.HandlerContext, ctx contex
 		routes.merge(lsRoutes)
 	}
 
+	for _, kids := range gw.ExtraChildren {
+		for _, k := range kids {
+			kidsRoutes, err := r.GetRoutesForResource(kctx, ctx, k)
+			if err != nil {
+				fmt.Println("======== err getting kids routes : ", err)
+				return nil, err
+			}
+			routes.merge(kidsRoutes)
+		}
+	}
+
 	return routes, nil
 }
 
@@ -379,6 +381,10 @@ func GenerateRouteKey(parent client.Object, listenerName string) string {
 	return fmt.Sprintf("%s/%s/%s", parent.GetNamespace(), parent.GetName(), listenerName)
 }
 
+type ListenerCollection interface {
+	GetListeners() []gwv1.Listener
+}
+
 func getListeners(resource client.Object) ([]gwv1.Listener, error) {
 	var listeners []gwv1.Listener
 	switch typed := resource.(type) {
@@ -386,6 +392,8 @@ func getListeners(resource client.Object) ([]gwv1.Listener, error) {
 		listeners = typed.Spec.Listeners
 	case *gwxv1a1.XListenerSet:
 		listeners = utils.ToListenerSlice(typed.Spec.Listeners)
+	case ListenerCollection:
+		listeners = typed.GetListeners()
 	default:
 		return nil, fmt.Errorf("unknown type")
 	}
@@ -475,6 +483,7 @@ func (r *gatewayQueries) processRoute(
 				}
 			}
 
+			fmt.Println("============= add route for lis :", l, route)
 			// If all checks pass, add the route to the listener result
 			lr.Routes = append(lr.Routes, r.GetRouteChain(kctx, ctx, route, hostnames, ref))
 		}

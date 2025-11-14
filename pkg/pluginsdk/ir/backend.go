@@ -283,12 +283,18 @@ type Listener struct {
 
 func (listener Listener) GetParentReporter(reporter reporter.Reporter) reporter.GatewayReporter {
 	switch t := listener.Parent.(type) {
-	case *gwv1.Gateway:
-		return reporter.Gateway(t)
 	case *gwxv1.XListenerSet:
 		return reporter.ListenerSet(t)
+	default:
+		// TODO : supply default based on type
+		return reporter.Gateway(&gwv1.Gateway{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "default",
+				Name:      "gw",
+			},
+		})
 	}
-	panic("Unknown parent type")
+	// panic("Unknown parent type")
 }
 
 // TODO: need to reevaluate DeepEqual usage
@@ -327,6 +333,7 @@ type Gateway struct {
 	AllowedListenerSets ListenerSets
 	DeniedListenerSets  ListenerSets
 	Obj                 *gwv1.Gateway
+	ExtraChildren       map[string][]client.Object
 
 	AttachedListenerPolicies AttachedPolicies
 	AttachedHttpPolicies     AttachedPolicies
@@ -383,8 +390,9 @@ func errorsEqual(a, b error) bool {
 // TODO: why is this in backend.go?
 type ListenerSet struct {
 	ObjectSource `json:",inline"`
-	Listeners    Listeners
-	Obj          *gwxv1.XListenerSet
+	// This is not used!! Can remove it
+	Listeners Listeners
+	Obj       *gwxv1.XListenerSet
 	// ListenerSet polices are attached to the individual listeners in addition
 	// to their specific policies
 
