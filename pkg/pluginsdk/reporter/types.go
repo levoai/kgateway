@@ -114,6 +114,7 @@ type Reporter interface {
 	ListenerSet(listenerSet *gwxv1alpha1.XListenerSet) ListenerSetReporter
 	Route(obj metav1.Object) RouteReporter
 	Policy(ref PolicyKey, observedGeneration int64) PolicyReporter
+	GatewayChild(obj metav1.Object) GatewayChildReporter
 }
 
 type GatewayReporter interface {
@@ -123,6 +124,12 @@ type GatewayReporter interface {
 }
 
 type ListenerSetReporter interface {
+	Listener(listener *gwv1.Listener) ListenerReporter
+	ListenerName(listenerName string) ListenerReporter
+	SetCondition(condition GatewayCondition)
+}
+
+type GatewayChildReporter interface {
 	Listener(listener *gwv1.Listener) ListenerReporter
 	ListenerName(listenerName string) ListenerReporter
 	SetCondition(condition GatewayCondition)

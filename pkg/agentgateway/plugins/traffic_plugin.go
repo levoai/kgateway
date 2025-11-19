@@ -122,6 +122,7 @@ func TranslateAgentgatewayPolicy(
 	var policyTargets []ResolvedTarget
 	// TODO: add selectors
 	for _, target := range policy.Spec.TargetRefs {
+		fmt.Println("+++++++ trafficPolicy :", policy.Name)
 		var policyTarget *api.PolicyTarget
 		// Build a base ParentReference for status
 
@@ -298,6 +299,7 @@ func TranslateAgentgatewayPolicy(
 	// sort all parents for consistency with Equals and for Update
 	// match sorting semantics of istio/istio, see:
 	// https://github.com/istio/istio/blob/6dcaa0206bcaf20e3e3b4e45e9376f0f96365571/pilot/pkg/config/kube/gateway/conditions.go#L188-L193
+	fmt.Println("+++++++ agwPolicies :", len(agwPolicies), agwPolicies)
 	slices.SortStableFunc(status.Ancestors, func(a, b gwv1.PolicyAncestorStatus) int {
 		return strings.Compare(reports.ParentString(a.AncestorRef), reports.ParentString(b.AncestorRef))
 	})

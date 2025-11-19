@@ -568,12 +568,13 @@ func (tc TestCase) Run(
 		agwCollections,
 		agwMergedPlugins,
 		nil,
+		nil,
 	)
 	agentGwSyncer.translator.Init()
 	gatewayClasses := agwtranslator.GatewayClassesCollection(agwCollections.GatewayClasses, krtOpts)
 	refGrants := agwtranslator.BuildReferenceGrants(agwtranslator.ReferenceGrantsCollection(agwCollections.ReferenceGrants, krtOpts))
 	_, listenerSets := agentGwSyncer.buildListenerSetCollection(gatewayClasses, refGrants, krtOpts)
-	_, gateways := agentGwSyncer.buildGatewayCollection(gatewayClasses, listenerSets, refGrants, krtOpts)
+	_, gateways := agentGwSyncer.buildGatewayCollection(gatewayClasses, listenerSets, refGrants, krtOpts, nil)
 
 	// Build ADP resources and addresses collections
 	agwResourcesCollection, _, _ := agentGwSyncer.buildAgwResources(gateways, refGrants, krtOpts)

@@ -34,6 +34,8 @@ import (
 
 var _ manager.LeaderElectionRunnable = &StatusSyncer{}
 
+type CustomSyncFunction func(ctx context.Context, logger *slog.Logger, rm reports.ReportMap)
+
 // StatusSyncer runs only on the leader and syncs the status of resources.
 type StatusSyncer struct {
 	mgr                   manager.Manager
@@ -45,6 +47,8 @@ type StatusSyncer struct {
 	latestReportQueue              utils.AsyncQueue[reports.ReportMap]
 	latestBackendPolicyReportQueue utils.AsyncQueue[reports.ReportMap]
 	cacheSyncs                     []cache.InformerSynced
+
+	customSync CustomSyncFunction
 }
 
 func NewStatusSyncer(
@@ -57,6 +61,7 @@ func NewStatusSyncer(
 	reportQueue utils.AsyncQueue[reports.ReportMap],
 	backendPolicyReportQueue utils.AsyncQueue[reports.ReportMap],
 	cacheSyncs []cache.InformerSynced,
+	customSync CustomSyncFunction,
 ) *StatusSyncer {
 	return &StatusSyncer{
 		mgr:                            mgr,
@@ -67,6 +72,7 @@ func NewStatusSyncer(
 		latestReportQueue:              reportQueue,
 		latestBackendPolicyReportQueue: backendPolicyReportQueue,
 		cacheSyncs:                     cacheSyncs,
+		customSync:                     customSync,
 	}
 }
 
@@ -108,6 +114,10 @@ func (s *StatusSyncer) Start(ctx context.Context) error {
 			s.syncListenerSetStatus(ctx, listenerSetStatusLogger, latestReport)
 			s.syncRouteStatus(ctx, routeStatusLogger, latestReport)
 			s.syncPolicyStatus(ctx, latestReport)
+			fmt.Println("---------- customSync :", s.customSync)
+			if s.customSync != nil {
+				s.customSync(ctx, gatewayStatusLogger, latestReport)
+			}
 		}
 	}()
 	go func() {

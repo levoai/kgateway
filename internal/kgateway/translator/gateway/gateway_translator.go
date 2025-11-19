@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"context"
+	"fmt"
 
 	"istio.io/istio/pkg/kube/krt"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -105,6 +106,7 @@ func setAttachedRoutes(gateway *ir.Gateway, routesForGw *query.RoutesForGwResult
 			// TODO we've never checked if the ListenerResult has an error.. is it already on RouteErrors?
 			availRoutes = len(res.Routes)
 		}
+		fmt.Println("---------- setAttachedRoutes", listener.Name, availRoutes)
 		parentReporter.Listener(&listener.Listener).SetAttachedRoutes(uint(availRoutes)) //nolint:gosec // G115: availRoutes is a count of routes, always non-negative
 	}
 }

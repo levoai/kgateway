@@ -283,18 +283,14 @@ type Listener struct {
 
 func (listener Listener) GetParentReporter(reporter reporter.Reporter) reporter.GatewayReporter {
 	switch t := listener.Parent.(type) {
+	case *gwv1.Gateway:
+		return reporter.Gateway(t)
 	case *gwxv1.XListenerSet:
 		return reporter.ListenerSet(t)
 	default:
-		// TODO : supply default based on type
-		return reporter.Gateway(&gwv1.Gateway{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "default",
-				Name:      "gw",
-			},
-		})
+		fmt.Println("-------- reporter.GatewayChild", t.GetName())
+		return reporter.GatewayChild(t)
 	}
-	// panic("Unknown parent type")
 }
 
 // TODO: need to reevaluate DeepEqual usage
@@ -333,7 +329,7 @@ type Gateway struct {
 	AllowedListenerSets ListenerSets
 	DeniedListenerSets  ListenerSets
 	Obj                 *gwv1.Gateway
-	ExtraChildren       map[string][]client.Object
+	Children            map[string][]client.Object
 
 	AttachedListenerPolicies AttachedPolicies
 	AttachedHttpPolicies     AttachedPolicies

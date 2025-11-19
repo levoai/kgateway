@@ -192,35 +192,57 @@ func (g ParentInfo) Equals(other ParentInfo) bool {
 		slices.Equal(g.Hostnames, other.Hostnames)
 }
 
+type GatewaysForAGWTransformationFunction func(cfg *GatewayCollectionConfig) func(ctx krt.HandlerContext, obj *gwv1.Gateway) (*gwv1.GatewayStatus, []*GatewayListener)
+
+type GatewayCollectionConfig struct {
+	ControllerName                   string
+	Gateways                         krt.Collection[*gwv1.Gateway]
+	ListenerSets                     krt.Collection[ListenerSet]
+	GatewayClasses                   krt.Collection[GatewayClass]
+	Namespaces                       krt.Collection[*corev1.Namespace]
+	Grants                           ReferenceGrants
+	Secrets                          krt.Collection[*corev1.Secret]
+	KrtOpts                          krtutil.KrtOptions
+	listenerIndex                    krt.Index[types.NamespacedName, ListenerSet]
+	ReportMap                        reports.ReportMap
+	GatewaysForAGWTransformationFunc GatewaysForAGWTransformationFunction
+}
+
 // GatewayCollection returns a collection of the internal representations GatewayListeners for the given gateway.
 func GatewayCollection(
-	controllerName string,
-	gateways krt.Collection[*gwv1.Gateway],
-	listenerSets krt.Collection[ListenerSet],
-	gatewayClasses krt.Collection[GatewayClass],
-	namespaces krt.Collection[*corev1.Namespace],
-	grants ReferenceGrants,
-	secrets krt.Collection[*corev1.Secret],
-	krtopts krtutil.KrtOptions,
+	cfg *GatewayCollectionConfig,
 ) (
 	krt.StatusCollection[*gwv1.Gateway, gwv1.GatewayStatus],
 	krt.Collection[*GatewayListener],
 ) {
-	listenerIndex := krt.NewIndex(listenerSets, "gatewayParent", func(o ListenerSet) []types.NamespacedName {
+	processConfig(cfg)
+	statusCol, gw := krt.NewStatusManyCollection(cfg.Gateways, cfg.GatewaysForAGWTransformationFunc(cfg), cfg.KrtOpts.ToOptions("KubernetesGateway")...)
+
+	return statusCol, gw
+}
+
+func processConfig(cfg *GatewayCollectionConfig) {
+	cfg.listenerIndex = krt.NewIndex(cfg.ListenerSets, "gatewayParent", func(o ListenerSet) []types.NamespacedName {
 		return []types.NamespacedName{o.GatewayParent}
 	})
-	statusCol, gw := krt.NewStatusManyCollection(gateways, func(ctx krt.HandlerContext, obj *gwv1.Gateway) (*gwv1.GatewayStatus, []*GatewayListener) {
-		class := krt.FetchOne(ctx, gatewayClasses, krt.FilterKey(string(obj.Spec.GatewayClassName)))
+
+	if cfg.GatewaysForAGWTransformationFunc == nil {
+		cfg.GatewaysForAGWTransformationFunc = GatewaysForAGWTransformationFunc
+	}
+}
+
+func GatewaysForAGWTransformationFunc(cfg *GatewayCollectionConfig) func(ctx krt.HandlerContext, obj *gwv1.Gateway) (*gwv1.GatewayStatus, []*GatewayListener) {
+	return func(ctx krt.HandlerContext, obj *gwv1.Gateway) (*gwv1.GatewayStatus, []*GatewayListener) {
+		class := krt.FetchOne(ctx, cfg.GatewayClasses, krt.FilterKey(string(obj.Spec.GatewayClassName)))
 		if class == nil {
 			logger.Debug("gateway class not found, skipping", "gw_name", obj.GetName(), "gatewayClassName", obj.Spec.GatewayClassName)
 			return nil, nil
 		}
-		if string(class.Controller) != controllerName {
+		if string(class.Controller) != cfg.ControllerName {
 			logger.Debug("skipping gateway not managed by our controller", "gw_name", obj.GetName(), "gatewayClassName", obj.Spec.GatewayClassName, "controllerName", class.Controller)
 			return nil, nil // ignore gateways not managed by our controller
 		}
-		rm := reports.NewReportMap()
-		statusReporter := reports.NewReporter(&rm)
+		statusReporter := (&cfg.ReportMap)
 		gwReporter := statusReporter.Gateway(obj)
 		logger.Debug("translating Gateway", "gw_name", obj.GetName(), "resource_version", obj.GetResourceVersion())
 
@@ -239,14 +261,14 @@ func GatewayCollection(
 				Reason:  gwv1.GatewayReasonInvalid,
 				Message: err.Message,
 			})
-			return rm.BuildGWStatus(context.Background(), *obj, nil), nil
+			return cfg.ReportMap.BuildGWStatus(context.Background(), *obj, nil), nil
 		}
 
 		for i, l := range kgw.Listeners {
 			// Attached Routes count starts at 0 and gets updated later in the status syncer
 			// when the real count is available after route processing
 
-			server, tlsInfo, updatedStatus, programmed := BuildListener(ctx, secrets, grants, namespaces, obj, status.Listeners, l, i, nil)
+			server, tlsInfo, updatedStatus, programmed := BuildListener(ctx, cfg.Secrets, cfg.Grants, cfg.Namespaces, obj, status.Listeners, l, i, nil)
 			status.Listeners = updatedStatus
 
 			lstatus := status.Listeners[i]
@@ -300,7 +322,7 @@ func GatewayCollection(
 			})
 			result = append(result, res)
 		}
-		listenersFromSets := krt.Fetch(ctx, listenerSets, krt.FilterIndex(listenerIndex, config.NamespacedName(obj)))
+		listenersFromSets := krt.Fetch(ctx, cfg.ListenerSets, krt.FilterIndex(cfg.listenerIndex, config.NamespacedName(obj)))
 		for _, ls := range listenersFromSets {
 			result = append(result, &GatewayListener{
 				Name:          ls.Name,
@@ -315,11 +337,9 @@ func GatewayCollection(
 				Valid:      ls.Valid,
 			})
 		}
-		gws := rm.BuildGWStatus(context.Background(), *obj, nil)
+		gws := cfg.ReportMap.BuildGWStatus(context.Background(), *obj, nil)
 		return gws, result
-	}, krtopts.ToOptions("KubernetesGateway")...)
-
-	return statusCol, gw
+	}
 }
 
 type ListenerSet struct {
@@ -359,6 +379,7 @@ func ListenerSetCollection(
 	namespaces krt.Collection[*corev1.Namespace],
 	grants ReferenceGrants,
 	secrets krt.Collection[*corev1.Secret],
+	rm reports.ReportMap,
 	krtopts krtutil.KrtOptions,
 ) (
 	krt.StatusCollection[*gatewayx.XListenerSet, gatewayx.ListenerSetStatus],
@@ -449,8 +470,27 @@ func ListenerSetCollection(
 				result = append(result, res)
 			}
 
+			statusReporter := (&rm)
+			lsReporter := statusReporter.ListenerSet(obj)
 			reportListenerSetStatus(obj, status)
-			return status, result
+			// gatewayConditions := map[string]*condition{
+			// 	string(gwv1.GatewayConditionAccepted): {
+			// 		reason:  string(gwv1.GatewayReasonAccepted),
+			// 		message: "Resource accepted",
+			// 	},
+			// 	string(gwv1.GatewayConditionProgrammed): {
+			// 		reason:  string(gwv1.GatewayReasonProgrammed),
+			// 		message: "Resource programmed",
+			// 	},
+			// }
+
+			lsReporter.SetCondition(reporter.GatewayCondition{
+				Type:   gwv1.GatewayConditionAccepted,
+				Status: metav1.ConditionTrue,
+				Reason: gwv1.GatewayReasonAccepted,
+			})
+
+			return rm.BuildListenerSetStatus(context.Background(), *obj), result
 		}, krtopts.ToOptions("ListenerSets")...)
 }
 
@@ -463,6 +503,7 @@ type RouteParents struct {
 // Fetch returns the parents for a given parent key.
 func (p RouteParents) Fetch(ctx krt.HandlerContext, pk ParentKey) []*ParentInfo {
 	return slices.Map(krt.Fetch(ctx, p.Gateways, krt.FilterIndex(p.GatewayIndex, pk)), func(gw *GatewayListener) *ParentInfo {
+		fmt.Println("========== RouteParents.Fetch :", gw.Name, gw.ParentGateway)
 		return &gw.ParentInfo
 	})
 }

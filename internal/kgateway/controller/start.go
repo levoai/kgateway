@@ -26,6 +26,7 @@ import (
 	"github.com/kgateway-dev/kgateway/v2/internal/kgateway/proxy_syncer"
 	"github.com/kgateway-dev/kgateway/v2/internal/kgateway/xds"
 	agwplugins "github.com/kgateway-dev/kgateway/v2/pkg/agentgateway/plugins"
+	"github.com/kgateway-dev/kgateway/v2/pkg/agentgateway/translator"
 	"github.com/kgateway-dev/kgateway/v2/pkg/apiclient"
 	"github.com/kgateway-dev/kgateway/v2/pkg/deployer"
 	"github.com/kgateway-dev/kgateway/v2/pkg/krtcollections"
@@ -93,7 +94,9 @@ type StartConfig struct {
 	ExtraAgwPolicyStatusHandlers map[string]agwplugins.AgwPolicyStatusSyncHandler
 
 	// GatewayControllerExtension is an extension that can be used to extend Gateway controller
-	GatewayControllerExtension sdk.GatewayControllerExtension
+	GatewayControllerExtension       sdk.GatewayControllerExtension
+	GatewaysForAGWTransformationFunc translator.GatewaysForAGWTransformationFunction
+	CustomSync                       proxy_syncer.CustomSyncFunction
 }
 
 // Start runs the controllers responsible for processing the K8s Gateway API objects
@@ -188,6 +191,7 @@ func NewControllerBuilder(ctx context.Context, cfg StartConfig) (*ControllerBuil
 			proxySyncer.ReportQueue(),
 			proxySyncer.BackendPolicyReportQueue(),
 			proxySyncer.CacheSyncs(),
+			cfg.CustomSync,
 		)
 		if err := cfg.Manager.Add(statusSyncer); err != nil {
 			setupLog.Error(err, "unable to add statusSyncer runnable")
@@ -206,6 +210,7 @@ func NewControllerBuilder(ctx context.Context, cfg StartConfig) (*ControllerBuil
 			cfg.AgwCollections,
 			agwMergedPlugins,
 			cfg.AdditionalGatewayClasses,
+			cfg.GatewaysForAGWTransformationFunc,
 		)
 
 		agwSyncer.Init(cfg.KrtOptions.WithPrefix("agentgateway"))

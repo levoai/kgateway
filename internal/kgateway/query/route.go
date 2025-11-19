@@ -357,14 +357,14 @@ func (r *gatewayQueries) GetRoutesForGateway(kctx krt.HandlerContext, ctx contex
 		routes.merge(lsRoutes)
 	}
 
-	for _, kids := range gw.ExtraChildren {
+	for _, kids := range gw.Children {
 		for _, k := range kids {
-			kidsRoutes, err := r.GetRoutesForResource(kctx, ctx, k)
+			kidRoutes, err := r.GetRoutesForResource(kctx, ctx, k)
 			if err != nil {
 				fmt.Println("======== err getting kids routes : ", err)
 				return nil, err
 			}
-			routes.merge(kidsRoutes)
+			routes.merge(kidRoutes)
 		}
 	}
 

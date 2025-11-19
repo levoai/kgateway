@@ -25,9 +25,11 @@ import (
 	"github.com/kgateway-dev/kgateway/v2/internal/kgateway/admin"
 	"github.com/kgateway-dev/kgateway/v2/internal/kgateway/agentgatewaysyncer"
 	"github.com/kgateway-dev/kgateway/v2/internal/kgateway/controller"
+	"github.com/kgateway-dev/kgateway/v2/internal/kgateway/proxy_syncer"
 	"github.com/kgateway-dev/kgateway/v2/internal/kgateway/wellknown"
 	"github.com/kgateway-dev/kgateway/v2/internal/kgateway/xds"
 	agwplugins "github.com/kgateway-dev/kgateway/v2/pkg/agentgateway/plugins"
+	"github.com/kgateway-dev/kgateway/v2/pkg/agentgateway/translator"
 	"github.com/kgateway-dev/kgateway/v2/pkg/apiclient"
 	"github.com/kgateway-dev/kgateway/v2/pkg/deployer"
 	"github.com/kgateway-dev/kgateway/v2/pkg/krtcollections"
@@ -193,6 +195,18 @@ func WithCommonCollectionsOptions(opts ...collections.Option) func(*setup) {
 	}
 }
 
+func WithGatewaysForAGWTransformationFunc(gatewaysForAGWTransformationFunc translator.GatewaysForAGWTransformationFunction) func(*setup) {
+	return func(s *setup) {
+		s.gatewaysForAGWTransformationFunc = gatewaysForAGWTransformationFunc
+	}
+}
+
+func WithCustomSyncFunc(customSync proxy_syncer.CustomSyncFunction) func(*setup) {
+	return func(s *setup) {
+		s.customSync = customSync
+	}
+}
+
 type setup struct {
 	apiClient                      apiclient.Client
 	extraInformerCacheSyncHandlers []cache.InformerSynced
@@ -212,13 +226,15 @@ type setup struct {
 	restConfig                     *rest.Config
 	ctrlMgrOptionsInitFunc         func(context.Context) *ctrl.Options
 	// extra controller manager config, like adding registering additional controllers
-	extraManagerConfig           []func(ctx context.Context, mgr manager.Manager, objectFilter kubetypes.DynamicObjectFilter) error
-	krtDebugger                  *krt.DebugHandler
-	globalSettings               *apisettings.Settings
-	leaderElectionID             string
-	validator                    validator.Validator
-	extraAgwPolicyStatusHandlers map[string]agwplugins.AgwPolicyStatusSyncHandler
-	commonCollectionsOptions     []collections.Option
+	extraManagerConfig               []func(ctx context.Context, mgr manager.Manager, objectFilter kubetypes.DynamicObjectFilter) error
+	krtDebugger                      *krt.DebugHandler
+	globalSettings                   *apisettings.Settings
+	leaderElectionID                 string
+	validator                        validator.Validator
+	extraAgwPolicyStatusHandlers     map[string]agwplugins.AgwPolicyStatusSyncHandler
+	commonCollectionsOptions         []collections.Option
+	gatewaysForAGWTransformationFunc translator.GatewaysForAGWTransformationFunction
+	customSync                       proxy_syncer.CustomSyncFunction
 }
 
 var _ Server = &setup{}
@@ -446,29 +462,31 @@ func (s *setup) buildKgatewayWithConfig(
 
 	slog.Info("initializing controller")
 	c, err := controller.NewControllerBuilder(ctx, controller.StartConfig{
-		Manager:                      mgr,
-		ControllerName:               s.gatewayControllerName,
-		AgwControllerName:            s.agwControllerName,
-		GatewayClassName:             s.gatewayClassName,
-		WaypointGatewayClassName:     s.waypointClassName,
-		AgentgatewayClassName:        s.agentgatewayClassName,
-		AdditionalGatewayClasses:     s.additionalGatewayClasses,
-		GatewayClassInfos:            gatewayClassInfos,
-		ExtraPlugins:                 s.extraPlugins,
-		ExtraAgwPlugins:              s.extraAgwPlugins,
-		HelmValuesGeneratorOverride:  s.helmValuesGeneratorOverride,
-		RestConfig:                   s.restConfig,
-		SetupOpts:                    setupOpts,
-		Client:                       s.apiClient,
-		AugmentedPods:                augmentedPods,
-		UniqueClients:                ucc,
-		Dev:                          logging.MustGetLevel(logging.DefaultComponent) <= logging.LevelTrace,
-		KrtOptions:                   krtOpts,
-		CommonCollections:            commonCollections,
-		AgwCollections:               agwCollections,
-		Validator:                    s.validator,
-		ExtraAgwPolicyStatusHandlers: s.extraAgwPolicyStatusHandlers,
-		GatewayControllerExtension:   s.gatewayControllerExtension,
+		Manager:                          mgr,
+		ControllerName:                   s.gatewayControllerName,
+		AgwControllerName:                s.agwControllerName,
+		GatewayClassName:                 s.gatewayClassName,
+		WaypointGatewayClassName:         s.waypointClassName,
+		AgentgatewayClassName:            s.agentgatewayClassName,
+		AdditionalGatewayClasses:         s.additionalGatewayClasses,
+		GatewayClassInfos:                gatewayClassInfos,
+		ExtraPlugins:                     s.extraPlugins,
+		ExtraAgwPlugins:                  s.extraAgwPlugins,
+		HelmValuesGeneratorOverride:      s.helmValuesGeneratorOverride,
+		RestConfig:                       s.restConfig,
+		SetupOpts:                        setupOpts,
+		Client:                           s.apiClient,
+		AugmentedPods:                    augmentedPods,
+		UniqueClients:                    ucc,
+		Dev:                              logging.MustGetLevel(logging.DefaultComponent) <= logging.LevelTrace,
+		KrtOptions:                       krtOpts,
+		CommonCollections:                commonCollections,
+		AgwCollections:                   agwCollections,
+		Validator:                        s.validator,
+		ExtraAgwPolicyStatusHandlers:     s.extraAgwPolicyStatusHandlers,
+		GatewayControllerExtension:       s.gatewayControllerExtension,
+		GatewaysForAGWTransformationFunc: s.gatewaysForAGWTransformationFunc,
+		CustomSync:                       s.customSync,
 	})
 	if err != nil {
 		slog.Error("failed initializing controller: ", "error", err)

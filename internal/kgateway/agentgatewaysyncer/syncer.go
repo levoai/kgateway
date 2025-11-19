@@ -33,6 +33,7 @@ import (
 	"github.com/kgateway-dev/kgateway/v2/pkg/deployer"
 	"github.com/kgateway-dev/kgateway/v2/pkg/logging"
 	"github.com/kgateway-dev/kgateway/v2/pkg/pluginsdk/krtutil"
+	"github.com/kgateway-dev/kgateway/v2/pkg/reports"
 	krtpkg "github.com/kgateway-dev/kgateway/v2/pkg/utils/krtutil"
 )
 
@@ -65,7 +66,8 @@ type Syncer struct {
 	EventPublisher *nack.NackEventPublisher
 
 	// features
-	Registrations []krtxds.Registration
+	Registrations                    []krtxds.Registration
+	GatewaysForAGWTransformationFunc translator.GatewaysForAGWTransformationFunction
 }
 
 func NewAgwSyncer(
@@ -75,16 +77,18 @@ func NewAgwSyncer(
 	agwCollections *plugins.AgwCollections,
 	agwPlugins plugins.AgwPlugin,
 	additionalGatewayClasses map[string]*deployer.GatewayClassInfo,
+	gatewaysForAGWTransformationFunc translator.GatewaysForAGWTransformationFunction,
 ) *Syncer {
 	return &Syncer{
-		agwCollections:           agwCollections,
-		controllerName:           controllerName,
-		agwPlugins:               agwPlugins,
-		translator:               translator.NewAgwTranslator(agwCollections),
-		additionalGatewayClasses: additionalGatewayClasses,
-		client:                   client,
-		statusCollections:        &status.StatusCollections{},
-		EventPublisher:           nack.NewNackEventPublisher(ctx, client),
+		agwCollections:                   agwCollections,
+		controllerName:                   controllerName,
+		agwPlugins:                       agwPlugins,
+		translator:                       translator.NewAgwTranslator(agwCollections),
+		additionalGatewayClasses:         additionalGatewayClasses,
+		client:                           client,
+		statusCollections:                &status.StatusCollections{},
+		EventPublisher:                   nack.NewNackEventPublisher(ctx, client),
+		GatewaysForAGWTransformationFunc: gatewaysForAGWTransformationFunc,
 	}
 }
 
@@ -101,17 +105,19 @@ func (s *Syncer) StatusCollections() *status.StatusCollections {
 
 func (s *Syncer) buildResourceCollections(krtopts krtutil.KrtOptions) {
 	// Build core collections for irs
+	rm := reports.NewReportMap()
 	gatewayClasses := translator.GatewayClassesCollection(s.agwCollections.GatewayClasses, krtopts)
 	refGrants := translator.BuildReferenceGrants(translator.ReferenceGrantsCollection(s.agwCollections.ReferenceGrants, krtopts))
-	listenerSetStatus, listenerSets := s.buildListenerSetCollection(gatewayClasses, refGrants, krtopts)
+	listenerSetStatus, listenerSets := s.buildListenerSetCollection(gatewayClasses, refGrants, rm, krtopts)
 	status.RegisterStatus(s.statusCollections, listenerSetStatus, translator.GetStatus)
-	gatewayInitialStatus, gateways := s.buildGatewayCollection(gatewayClasses, listenerSets, refGrants, krtopts)
+	gatewayInitialStatus, gateways := s.buildGatewayCollection(gatewayClasses, listenerSets, refGrants, krtopts, s.GatewaysForAGWTransformationFunc)
 
 	// Build Agw resources for gateway
 	agwResources, routeAttachments, policyStatuses := s.buildAgwResources(gateways, refGrants, krtopts)
 	for _, col := range policyStatuses {
 		status.RegisterStatus(s.statusCollections, col, translator.GetStatus)
 	}
+	fmt.Println("+++++++++++", agwResources.List())
 
 	gatewayFinalStatus := s.buildFinalGatewayStatus(gatewayInitialStatus, routeAttachments, krtopts)
 	status.RegisterStatus(s.statusCollections, gatewayFinalStatus, translator.GetStatus)
@@ -159,25 +165,29 @@ func (s *Syncer) buildGatewayCollection(
 	listenerSets krt.Collection[translator.ListenerSet],
 	refGrants translator.ReferenceGrants,
 	krtopts krtutil.KrtOptions,
+	gatewaysForAGWTransformationFunc translator.GatewaysForAGWTransformationFunction,
 ) (
 	krt.StatusCollection[*gwv1.Gateway, gwv1.GatewayStatus],
 	krt.Collection[*translator.GatewayListener],
 ) {
-	return translator.GatewayCollection(
-		s.controllerName,
-		s.agwCollections.Gateways,
-		listenerSets,
-		gatewayClasses,
-		s.agwCollections.Namespaces,
-		refGrants,
-		s.agwCollections.Secrets,
-		krtopts,
-	)
+	cfg := &translator.GatewayCollectionConfig{
+		ControllerName:                   s.controllerName,
+		Gateways:                         s.agwCollections.Gateways,
+		ListenerSets:                     listenerSets,
+		GatewayClasses:                   gatewayClasses,
+		Namespaces:                       s.agwCollections.Namespaces,
+		Grants:                           refGrants,
+		Secrets:                          s.agwCollections.Secrets,
+		KrtOpts:                          krtopts,
+		GatewaysForAGWTransformationFunc: gatewaysForAGWTransformationFunc,
+	}
+	return translator.GatewayCollection(cfg)
 }
 
 func (s *Syncer) buildListenerSetCollection(
 	gatewayClasses krt.Collection[translator.GatewayClass],
 	refGrants translator.ReferenceGrants,
+	rm reports.ReportMap,
 	krtopts krtutil.KrtOptions,
 ) (
 	krt.StatusCollection[*gatewayx.XListenerSet, gatewayx.ListenerSetStatus],
@@ -191,6 +201,7 @@ func (s *Syncer) buildListenerSetCollection(
 		s.agwCollections.Namespaces,
 		refGrants,
 		s.agwCollections.Secrets,
+		rm,
 		krtopts,
 	)
 }

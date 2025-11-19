@@ -1021,8 +1021,10 @@ func extractParentReferenceInfo(ctx RouteContext, parents RouteParents, obj cont
 	for _, ref := range routeRefs {
 		ir, err := ToInternalParentReference(ref, localNamespace)
 		if err != nil {
+			fmt.Println("============ extractParentReferenceInfo err :", obj.GetName(), err)
 			continue
 		}
+		fmt.Println("============ extractParentReferenceInfo ir :", obj.GetName(), ir)
 		pk := ParentReference{
 			ParentKey:   ir,
 			SectionName: ptr.OrEmpty(ref.SectionName),
@@ -1030,6 +1032,7 @@ func extractParentReferenceInfo(ctx RouteContext, parents RouteParents, obj cont
 		}
 		gk := ir
 		currentParents := parents.Fetch(ctx.Krt, gk)
+		fmt.Println("============ extractParentReferenceInfo currentParents :", obj.GetName(), currentParents)
 		appendParent := func(pr *ParentInfo, pk ParentReference) {
 			bannedHostnames := sets.New[string]()
 			for _, gw := range currentParents {

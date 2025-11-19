@@ -13,7 +13,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	gwv1 "sigs.k8s.io/gateway-api/apis/v1"
 
-	"github.com/kgateway-dev/kgateway/v2/internal/kgateway/krtcollections"
 	"github.com/kgateway-dev/kgateway/v2/internal/kgateway/query"
 	route "github.com/kgateway-dev/kgateway/v2/internal/kgateway/translator/httproute"
 	"github.com/kgateway-dev/kgateway/v2/internal/kgateway/translator/metrics"
@@ -21,6 +20,7 @@ import (
 	"github.com/kgateway-dev/kgateway/v2/internal/kgateway/translator/sslutils"
 	"github.com/kgateway-dev/kgateway/v2/internal/kgateway/utils"
 	"github.com/kgateway-dev/kgateway/v2/internal/kgateway/wellknown"
+	"github.com/kgateway-dev/kgateway/v2/pkg/krtcollections"
 	"github.com/kgateway-dev/kgateway/v2/pkg/logging"
 	"github.com/kgateway-dev/kgateway/v2/pkg/pluginsdk/ir"
 	reports "github.com/kgateway-dev/kgateway/v2/pkg/pluginsdk/reporter"
@@ -54,7 +54,9 @@ func TranslateListeners(
 		Translator: "TranslateListeners",
 	})(nil)
 
+	fmt.Println("========= listeners :", len(gateway.Listeners), gateway.Listeners)
 	validatedListeners := validateGateway(gateway, reporter, settings)
+	fmt.Println("========= validatedListeners :", len(validatedListeners), validatedListeners)
 	mergedListeners := mergeGWListeners(queries, gateway.Namespace, validatedListeners, *gateway, routesForGw, reporter, settings)
 	translatedListeners := mergedListeners.translateListeners(kctx, ctx, queries, reporter)
 
@@ -78,6 +80,7 @@ func mergeGWListeners(
 	}
 	for _, listener := range listeners {
 		result := routesForGw.GetListenerResult(listener.Parent, string(listener.Name))
+		fmt.Println("=============== l", listener.Name, result)
 		if result == nil || result.Error != nil {
 			// TODO report
 			// TODO, if Error is not nil, this is a user-config error on selectors
@@ -91,6 +94,10 @@ func mergeGWListeners(
 		}
 		ml.AppendListener(listener, routes, listenerReporter)
 	}
+	fmt.Println("============= mergeGWListeners", ml)
+	// for _, l := range ml.Listeners {
+	// 	fmt.Println("=============== l", *l.httpFilterChain.parents[0].routesWithHosts[0])
+	// }
 	return ml
 }
 

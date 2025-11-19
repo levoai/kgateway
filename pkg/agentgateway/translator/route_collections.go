@@ -348,6 +348,7 @@ func createRouteCollectionGeneric[T controllers.Object, R comparable, ST any](
 		parentRefs, gwResult := computeRoute(ctx, obj, func(obj T) iter.Seq2[R, *reporter.RouteCondition] {
 			return translatorSeq
 		})
+		fmt.Println("======== createRouteCollectionGeneric :", obj.GetName(), parentRefs)
 
 		// gateway -> section name -> route count
 		routeNN := types.NamespacedName{Namespace: obj.GetNamespace(), Name: obj.GetName()}
@@ -487,6 +488,7 @@ func computeRoute[T controllers.Object, O comparable](ctx RouteContext, obj T, t
 ) iter.Seq2[O, *reporter.RouteCondition],
 ) ([]RouteParentReference, ConversionResult[O]) {
 	parentRefs := extractParentReferenceInfo(ctx, ctx.RouteParents, obj)
+	fmt.Println("========== computeRoute :", obj.GetName(), parentRefs)
 
 	convertRules := func() ConversionResult[O] {
 		res := ConversionResult[O]{}
@@ -576,6 +578,8 @@ func gatewayRouteAttachmentCountCollection[T controllers.Object](
 		parentRefs := extractParentReferenceInfo(ctx, inputs.RouteParents, obj)
 		return slices.MapFilter(FilteredReferences(parentRefs), func(e RouteParentReference) **RouteAttachment {
 			if e.ParentKey.Kind != wellknown.GatewayGVK {
+				fmt.Println("========= route not matched : ", e.OriginalReference.Name)
+				fmt.Println("========= route not matched : ", e.ParentKey.Kind)
 				return nil
 			}
 			return ptr.Of(&RouteAttachment{
