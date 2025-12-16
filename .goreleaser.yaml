@@ -62,6 +62,8 @@ dockers:
       - "--platform=linux/arm64"
       - "--build-arg=GOARCH=arm64"
       - "--build-arg=ENVOY_IMAGE={{ .Env.ENVOY_IMAGE }}"
+    extra_files:
+      - cmd/kgateway/copy-envoy-libs.sh
   - image_templates:
       - &controller_amd_image "{{ .Env.IMAGE_REGISTRY }}/{{ .Env.CONTROLLER_IMAGE_REPO }}:{{ .Env.VERSION }}-amd64"
     use: buildx
@@ -73,6 +75,8 @@ dockers:
       - "--platform=linux/amd64"
       - "--build-arg=GOARCH=amd64"
       - "--build-arg=ENVOY_IMAGE={{ .Env.ENVOY_IMAGE }}"
+    extra_files:
+      - cmd/kgateway/copy-envoy-libs.sh
   - image_templates:
       - &sds_arm_image "{{ .Env.IMAGE_REGISTRY }}/{{ .Env.SDS_IMAGE_REPO }}:{{ .Env.VERSION }}-arm64"
     use: buildx
