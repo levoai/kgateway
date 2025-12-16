@@ -17,7 +17,7 @@ The project uses Gateway API versions `v1`, `v1alpha2`, and `v1beta1` only. The 
 # Changelog
 
 ```release-note
-Remove unused v1alpha3 Gateway API import alias from golangci-lint configuration
+NONE
 ```
 
 # Additional Notes
