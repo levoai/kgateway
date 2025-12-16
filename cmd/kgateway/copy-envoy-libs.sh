@@ -1,5 +1,6 @@
 #!/bin/sh
-set -eu
+set -e
+set -u
 
 # Note: Since envoy-gloo is only available for amd64, we always copy amd64 libraries
 # The envoy binary is only used for xDS validation in the controller, and validation
