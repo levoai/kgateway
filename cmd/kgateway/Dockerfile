@@ -1,14 +1,19 @@
 ARG ENVOY_IMAGE
 
 # Stage 1: Extract envoy binary and required shared libraries from envoy-gloo image
-FROM --platform=$TARGETPLATFORM $ENVOY_IMAGE AS builder
+# Note: We always use linux/amd64 for envoy since envoy-gloo is not multi-arch.
+# The envoy binary is only used for xDS validation in the controller, not for actual proxying.
+FROM --platform=linux/amd64 $ENVOY_IMAGE AS builder
+
+# TARGETPLATFORM is automatically set by buildx, but needs to be declared as ARG to be used in RUN
+ARG TARGETPLATFORM
 
 # Copy the script that extracts platform-specific shared libraries
 COPY copy-envoy-libs.sh /tmp/copy-envoy-libs.sh
 RUN chmod +x /tmp/copy-envoy-libs.sh && /tmp/copy-envoy-libs.sh
 
 # Stage 2: Build final image with minimal base
-FROM cgr.dev/chainguard/static
+FROM gcr.io/distroless/static-debian12:nonroot
 
 ARG GOARCH=amd64
 
