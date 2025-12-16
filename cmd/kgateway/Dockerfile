@@ -1,21 +1,24 @@
 ARG ENVOY_IMAGE
 
-FROM $ENVOY_IMAGE
+# Stage 1: Extract envoy binary and required shared libraries from envoy-gloo image
+FROM --platform=$TARGETPLATFORM $ENVOY_IMAGE AS builder
+
+# Copy the script that extracts platform-specific shared libraries
+COPY copy-envoy-libs.sh /tmp/copy-envoy-libs.sh
+RUN chmod +x /tmp/copy-envoy-libs.sh && /tmp/copy-envoy-libs.sh
+
+# Stage 2: Build final image with minimal base
+FROM cgr.dev/chainguard/static
 
 ARG GOARCH=amd64
-# eventually may matter for now https://unix.stackexchange.com/a/701288
-# means its not too useful
-ENV DEBIAN_FRONTEND=noninteractive
 
-# Update our deps to make cve toil lower
-#install wget for our default probes
-RUN apt-get update \
-    && apt-get upgrade -y \
-    && apt-get install --no-install-recommends -y  ca-certificates \
-    && apt-get install wget -y \
-    && rm -rf  /var/log/*log /var/lib/apt/lists/* /var/log/apt/* /var/lib/dpkg/*-old /var/cache/debconf/*-old
-
+# Copy kgateway binary
 COPY kgateway-linux-$GOARCH /usr/local/bin/kgateway
+
+# Copy envoy binary and its dependencies from builder stage
+COPY --from=builder /out/ /
+COPY --from=builder /usr/local/bin/envoy /usr/local/bin/envoy
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
 USER 10101
 
