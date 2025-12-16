@@ -18,7 +18,8 @@ ARG GOARCH=amd64
 COPY kgateway-linux-$GOARCH /usr/local/bin/kgateway
 
 # Copy envoy binary and its dependencies from builder stage
-COPY --from=builder /out/ /
+COPY --from=builder /out/lib/ /lib/
+COPY --from=builder /out/lib64/ /lib64/
 COPY --from=builder /usr/local/bin/envoy /usr/local/bin/envoy
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
