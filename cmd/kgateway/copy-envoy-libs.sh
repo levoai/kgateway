@@ -9,9 +9,17 @@ set -eu
 mkdir -p /out/lib/x86_64-linux-gnu /out/lib64
 
 # Required shared libraries (ldd output from envoy binary on amd64 machine)
-cp /lib/x86_64-linux-gnu/libm.so.6 /out/lib/x86_64-linux-gnu/libm.so.6
-cp /lib/x86_64-linux-gnu/librt.so.1 /out/lib/x86_64-linux-gnu/librt.so.1
-cp /lib/x86_64-linux-gnu/libdl.so.2 /out/lib/x86_64-linux-gnu/libdl.so.2
-cp /lib/x86_64-linux-gnu/libpthread.so.0 /out/lib/x86_64-linux-gnu/libpthread.so.0
-cp /lib/x86_64-linux-gnu/libc.so.6 /out/lib/x86_64-linux-gnu/libc.so.6
+# Using explicit checks to provide clear error messages if libraries are missing
+for lib in libm.so.6 librt.so.1 libdl.so.2 libpthread.so.0 libc.so.6; do
+  if [ ! -f "/lib/x86_64-linux-gnu/$lib" ]; then
+    echo "ERROR: Required library /lib/x86_64-linux-gnu/$lib not found in envoy-gloo image" >&2
+    exit 1
+  fi
+  cp "/lib/x86_64-linux-gnu/$lib" "/out/lib/x86_64-linux-gnu/$lib"
+done
+
+if [ ! -f "/lib64/ld-linux-x86-64.so.2" ]; then
+  echo "ERROR: Required library /lib64/ld-linux-x86-64.so.2 not found in envoy-gloo image" >&2
+  exit 1
+fi
 cp /lib64/ld-linux-x86-64.so.2 /out/lib64/ld-linux-x86-64.so.2

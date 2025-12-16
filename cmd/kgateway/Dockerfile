@@ -5,10 +5,7 @@ ARG ENVOY_IMAGE
 # The envoy binary is only used for xDS validation in the controller, not for actual proxying.
 FROM --platform=linux/amd64 $ENVOY_IMAGE AS builder
 
-# TARGETPLATFORM is automatically set by buildx, but needs to be declared as ARG to be used in RUN
-ARG TARGETPLATFORM
-
-# Copy the script that extracts platform-specific shared libraries
+# Copy the script that extracts required shared libraries for the envoy binary
 COPY copy-envoy-libs.sh /tmp/copy-envoy-libs.sh
 RUN chmod +x /tmp/copy-envoy-libs.sh && /tmp/copy-envoy-libs.sh
 
