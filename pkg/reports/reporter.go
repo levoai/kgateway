@@ -28,9 +28,10 @@ type ReportMap struct {
 }
 
 type GatewayReport struct {
-	conditions         []metav1.Condition
-	listeners          map[string]*ListenerReport
-	observedGeneration int64
+	conditions           []metav1.Condition
+	listeners            map[string]*ListenerReport
+	observedGeneration   int64
+	attachedListenerSets int32
 }
 
 type ListenerSetReport struct {
@@ -223,6 +224,10 @@ func (g *GatewayReport) GetConditions() []metav1.Condition {
 	return g.conditions
 }
 
+func (g *GatewayReport) SetAttachedListenerSets(count int32) {
+	g.attachedListenerSets = count
+}
+
 func (g *GatewayReport) SetCondition(gc reporter.GatewayCondition) {
 	condition := metav1.Condition{
 		Type:    string(gc.Type),
@@ -272,6 +277,10 @@ func (g *ListenerSetReport) SetCondition(gc reporter.GatewayCondition) {
 		Message: gc.Message,
 	}
 	meta.SetStatusCondition(&g.conditions, condition)
+}
+
+func (g *ListenerSetReport) SetAttachedListenerSets(count int32) {
+	panic("This should not be called")
 }
 
 func (g *ListenerSetReport) GetObservedGeneration() int64 {

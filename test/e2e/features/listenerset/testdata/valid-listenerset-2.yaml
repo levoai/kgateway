@@ -28,7 +28,7 @@ spec:
       name: valid-ls-2
       namespace: allowed-ns
   hostnames:
-    - "listenerset-2.com"
+    - "listener-set-2.com"
   rules:
     - backendRefs:
         - name: example-svc

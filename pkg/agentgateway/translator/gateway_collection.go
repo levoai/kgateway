@@ -423,8 +423,8 @@ func ListenerSetCollection(
 			//}
 
 			for i, l := range ls.Listeners {
-				port, portErr := kubeutils.DetectListenerPortNumber(l.Protocol, l.Port)
-				l.Port = port
+				port, portErr := kubeutils.DetectListenerPortNumber(l.Protocol, gwv1.PortNumber(l.Port))
+				l.Port = gatewayx.PortNumber(port)
 				standardListener := convertListenerSetToListener(l)
 				originalStatus := slices.Map(status.Listeners, convertListenerSetStatusToStandardStatus)
 				hostnames, tlsInfo, updatedStatus, programmed := BuildListener(ctx, secrets, configMaps, grants, namespaces,
@@ -445,7 +445,7 @@ func ListenerSetCollection(
 					Hostnames:        hostnames,
 					OriginalHostname: string(ptr.OrEmpty(l.Hostname)),
 					SectionName:      l.Name,
-					Port:             l.Port,
+					Port:             gwv1.PortNumber(l.Port),
 					Protocol:         l.Protocol,
 					TLSPassthrough:   l.TLS != nil && l.TLS.Mode != nil && *l.TLS.Mode == gwv1.TLSModePassthrough,
 				}
@@ -533,14 +533,20 @@ func NamespaceAcceptedByAllowListeners(localNamespace string, parent *gwv1.Gatew
 
 func convertListenerSetToListener(l gatewayx.ListenerEntry) gwv1.Listener {
 	// For now, structs are identical enough Go can cast them. I doubt this will hold up forever, but we can adjust as needed.
-	return gwv1.Listener(l)
+	return gwv1.Listener{
+		Name:          l.Name,
+		Hostname:      l.Hostname,
+		Port:          gwv1.PortNumber(l.Port),
+		Protocol:      l.Protocol,
+		TLS:           l.TLS,
+		AllowedRoutes: l.AllowedRoutes,
+	}
 }
 
 func convertStandardStatusToListenerSetStatus(l gatewayx.ListenerEntry) func(e gwv1.ListenerStatus) gatewayx.ListenerEntryStatus {
 	return func(e gwv1.ListenerStatus) gatewayx.ListenerEntryStatus {
 		return gatewayx.ListenerEntryStatus{
 			Name:           e.Name,
-			Port:           l.Port,
 			SupportedKinds: e.SupportedKinds,
 			AttachedRoutes: e.AttachedRoutes,
 			Conditions:     e.Conditions,

@@ -381,12 +381,12 @@ func GatewaysForDeployerTransformationFunc(config *GatewayIndexConfig) func(kctx
 
 		for _, ls := range listenerSets {
 			for _, l := range ls.Spec.Listeners {
-				port, portErr := kubeutils.DetectListenerPortNumber(l.Protocol, l.Port)
+				port, portErr := kubeutils.DetectListenerPortNumber(l.Protocol, gwv1.PortNumber(l.Port))
 				// Don't need to log an error for the deployer as it will be reflected in the listener status during reconciliation
 				if portErr != nil {
 					continue
 				}
-				ports.Insert(port)
+				ports.Insert(gwv1.PortNumber(port))
 			}
 		}
 		ir := &ir.GatewayForDeployer{

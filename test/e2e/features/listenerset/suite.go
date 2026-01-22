@@ -297,7 +297,7 @@ func (s *testingSuite) TestPolicies() {
 		[]curl.Option{
 			curl.WithHost(kubeutils.ServiceFQDN(proxyService.ObjectMeta)),
 			curl.WithPort(ls2Listener1Port),
-			curl.WithHostHeader("listenerset-2.com"),
+			curl.WithHostHeader("listener-set-2.com"),
 		},
 		expectOKWithCustomHeader("policy", "gateway"))
 }
@@ -322,7 +322,6 @@ func (s *testingSuite) expectValidListenerSetAccepted(obj client.Object) {
 			Listeners: []gwxv1a1.ListenerEntryStatus{
 				{
 					Name:           "http",
-					Port:           gwxv1a1.PortNumber(ls1Listener1Port), //nolint:gosec // G115: test port constant is int, always in valid range
 					AttachedRoutes: 1,
 					Conditions: []metav1.Condition{
 						{
@@ -349,7 +348,6 @@ func (s *testingSuite) expectValidListenerSetAccepted(obj client.Object) {
 				},
 				{
 					Name:           "http-2",
-					Port:           gwxv1a1.PortNumber(ls1Listener2Port), //nolint:gosec // G115: test port constant is int, always in valid range
 					AttachedRoutes: 2,
 					Conditions: []metav1.Condition{
 						{
@@ -509,7 +507,6 @@ func (s *testingSuite) expectConflictedListenerSetConflicted(obj client.Object) 
 			Listeners: []gwxv1a1.ListenerEntryStatus{
 				{
 					Name:           "gw-listener-hostname-conflict",
-					Port:           gwxv1a1.PortNumber(gwListener2Port), //nolint:gosec // G115: test port constant is int, always in valid range
 					AttachedRoutes: 1,
 					Conditions: []metav1.Condition{
 						{
@@ -539,7 +536,6 @@ func (s *testingSuite) expectConflictedListenerSetConflicted(obj client.Object) 
 				},
 				{
 					Name:           "ls-listener-protocol-conflict",
-					Port:           gwxv1a1.PortNumber(ls1Listener2Port), //nolint:gosec // G115: test port constant is int, always in valid range
 					AttachedRoutes: 0,
 					Conditions: []metav1.Condition{
 						{
@@ -569,7 +565,6 @@ func (s *testingSuite) expectConflictedListenerSetConflicted(obj client.Object) 
 				},
 				{
 					Name:           "http",
-					Port:           gwxv1a1.PortNumber(ls3Listener1Port), //nolint:gosec // G115: test port constant is int, always in valid range
 					AttachedRoutes: 1,
 					Conditions: []metav1.Condition{
 						{

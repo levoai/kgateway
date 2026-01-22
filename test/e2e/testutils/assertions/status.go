@@ -391,9 +391,6 @@ func (p *Provider) EventuallyListenerSetStatus(
 		for _, expectedListener := range status.Listeners {
 			listenerStatus := getListenerEntryStatus(ls.Status.Listeners, string(expectedListener.Name))
 			g.Expect(listenerStatus).NotTo(gomega.BeNil(), fmt.Sprintf("%v listener status not found for listener %s. Full status: %+v", expectedListener.Name, expectedListener.Name, ls.Status))
-			if expectedListener.Port != 0 {
-				g.Expect(listenerStatus.Port).To(gomega.Equal(expectedListener.Port), fmt.Sprintf("%v listener condition is not %v for listener %s. Full status: %+v", expectedListener, expectedListener.Port, expectedListener.Name, ls.Status))
-			}
 			if expectedListener.AttachedRoutes != 0 {
 				g.Expect(listenerStatus.AttachedRoutes).To(gomega.Equal(expectedListener.AttachedRoutes), fmt.Sprintf("%v condition is not %v for listener %s. Full status: %+v", expectedListener, expectedListener.AttachedRoutes, expectedListener.Name, ls.Status))
 			}
