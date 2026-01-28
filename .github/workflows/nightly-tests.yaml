@@ -116,6 +116,8 @@ jobs:
         ref: ${{ env.BRANCH }}
     - name: Prep Go Runner
       uses: ./.github/actions/prep-go-runner
+      with:
+        private-repo-token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
     - name: Dotenv Action
       uses: falti/dotenv-action@v1.1.4
       id: dotenv

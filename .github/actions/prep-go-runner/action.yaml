@@ -7,6 +7,10 @@ inputs:
     description: 'directory to run setup steps in'
     required: false
     default: '.'
+  private-repo-token:
+    description: 'Token with access to private levoai repos (for go mod download)'
+    required: false
+    default: ''
 
 runs:
   using: "composite"
@@ -77,9 +81,11 @@ runs:
         key: ${{ runner.os }}-go-${{ steps.setup-go.outputs.go-version }}-${{ hashFiles('**/go.sum') }}
     - name: Configure Git for Private Repos
       shell: bash
+      env:
+        PRIVATE_TOKEN: ${{ inputs.private-repo-token || github.token }}
       run: |
-        # Configure git to use GITHUB_TOKEN for private levoai repos
-        git config --global url."https://${{ github.token }}@github.com/levoai/".insteadOf "https://github.com/levoai/"
+        # Configure git to use token for private levoai repos
+        git config --global url."https://${PRIVATE_TOKEN}@github.com/levoai/".insteadOf "https://github.com/levoai/"
         # Set GOPRIVATE to tell Go these are private modules
         echo "GOPRIVATE=github.com/levoai/*" >> $GITHUB_ENV
     - name: Install Dependencies

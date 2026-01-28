@@ -91,6 +91,8 @@ jobs:
     - uses: actions/checkout@v4
     - name: Prep Go Runner
       uses: ./.github/actions/prep-go-runner
+      with:
+        private-repo-token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
     # The dotenv action is used to load key-value pairs from files.
     # In this case, the file is specified in the matrix and will contain the versions of the tools to use
     - name: Dotenv Action
