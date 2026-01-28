@@ -12,9 +12,10 @@ const (
 	// EnvoyWrapperImage is the image of the envoy wrapper container.
 	EnvoyWrapperImage = "envoy-wrapper"
 	// AgentgatewayImage is the agentgateway image repository
-	AgentgatewayImage = "agentgateway"
+	// Note: levoai fork uses levoai/aigateway for guardrails support
+	AgentgatewayImage = "levoai/aigateway"
 	// AgentgatewayRegistry is the agentgateway registry
-	AgentgatewayRegistry = "cr.agentgateway.dev"
+	AgentgatewayRegistry = "ghcr.io"
 	// AgentgatewayDefaultTag is the default agentgateway image tag
 	// Note: should be in sync with version in go.mod and test/deployer/testdata/*
 	AgentgatewayDefaultTag = "0.11.2"
