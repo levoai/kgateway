@@ -75,6 +75,13 @@ runs:
         path: |
           ${{ steps.go-cache-paths.outputs.go-mod }}
         key: ${{ runner.os }}-go-${{ steps.setup-go.outputs.go-version }}-${{ hashFiles('**/go.sum') }}
+    - name: Configure Git for Private Repos
+      shell: bash
+      run: |
+        # Configure git to use GITHUB_TOKEN for private levoai repos
+        git config --global url."https://${{ github.token }}@github.com/levoai/".insteadOf "https://github.com/levoai/"
+        # Set GOPRIVATE to tell Go these are private modules
+        echo "GOPRIVATE=github.com/levoai/*" >> $GITHUB_ENV
     - name: Install Dependencies
       if: steps.cache.outputs.cache-hit != 'true'
       shell: bash
