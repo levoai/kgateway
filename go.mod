@@ -446,6 +446,9 @@ require (
 	sigs.k8s.io/randfill v1.0.0 // indirect
 )
 
+// Use levoai fork which includes LlmBastionConfig for guardrails support
+replace github.com/agentgateway/agentgateway => github.com/levoai/aigateway v0.11.2
+
 tool (
 	github.com/golang/mock/mockgen
 	github.com/golangci/golangci-lint/v2/cmd/golangci-lint
