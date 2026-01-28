@@ -1,0 +1,92 @@
+name: Deploy to Levo Clusters
+
+on:
+  # Trigger after the Release workflow completes
+  workflow_run:
+    workflows: ["Release"]
+    types:
+      - completed
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      version:
+        type: string
+        required: false
+        description: "Version to deploy (defaults to edge)"
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  DEFAULT_VERSION: v2.3.0-main
+
+jobs:
+  deploy-kgateway:
+    name: Deploy kgateway to spec-building
+    runs-on: ubuntu-latest
+    # Only run for levoai/kgateway and if release workflow succeeded (or manual dispatch)
+    if: |
+      github.repository == 'levoai/kgateway' &&
+      (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Determine version
+        id: version
+        run: |
+          if [[ -n "${{ inputs.version }}" ]]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION="${{ env.DEFAULT_VERSION }}"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Using version: $VERSION"
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS_E2E }}
+
+      - name: Set AKS context
+        uses: azure/aks-set-context@v4
+        with:
+          resource-group: ${{ vars.RESOURCE_GROUP }}
+          cluster-name: ${{ vars.CLUSTER_NAME }}
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4.3.0
+        with:
+          version: 'v3.14.4'
+
+      - name: Login to Helm registry
+        run: |
+          echo "${{ secrets.LEVOBOT_TOKEN }}" | helm registry login ${{ env.REGISTRY }} -u github-bot@levo.ai --password-stdin
+
+      - name: Deploy kgateway CRDs
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          helm upgrade --install kgateway-crds \
+            oci://${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/charts/kgateway-crds \
+            --version "${VERSION}" \
+            --wait --timeout 5m || \
+          echo "CRDs may already be up to date, continuing..."
+
+      - name: Deploy kgateway control plane
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          helm upgrade --install --create-namespace -n kgateway-system kgateway \
+            oci://${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/charts/kgateway \
+            --version "${VERSION}" \
+            --set controller.image.registry="${{ env.REGISTRY }}" \
+            --set controller.image.repository="${{ env.IMAGE_NAME }}/kgateway" \
+            --set controller.image.tag="${VERSION}" \
+            --set 'imagePullSecrets[0].name=ghcr-registry-secret' \
+            --wait --timeout 5m
+
+      - name: Verify kgateway deployment
+        run: |
+          kubectl rollout status deployment/kgateway -n kgateway-system --timeout=5m
+          echo "kgateway control plane deployed successfully!"
+          kubectl get pods -n kgateway-system
